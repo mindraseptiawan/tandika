@@ -1,0 +1,67 @@
+<?php
+
+namespace App\Http\Controllers\API;
+
+use App\Helpers\ResponseFormatter;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Sale;
+
+class SaleController extends Controller
+{
+    public function all()
+    {
+        $sales = Sale::with('order', 'transaction', 'customer')->get();
+        return response()->json($sales);
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'transaction_id' => 'required|exists:transactions,id',
+            'customer_id' => 'required|exists:customers,id',
+            'quantity' => 'required|numeric',
+            'price_per_unit' => 'required|numeric',
+            'total_price' => 'required|numeric'
+        ]);
+        $sale = Sale::create($request->all());
+
+        return response()->json($sale, 201);
+    }
+
+    public function update($id, Request $request)
+    {
+        $request->validate([
+            'quantity' => 'sometimes|required|numeric',
+            'price_per_unit' => 'sometimes|required|numeric',
+            'total_price' => 'sometimes|required|numeric'
+        ]);
+
+        $sale = Sale::findOrFail($id);
+        $sale->update($request->only(['quantity', 'price_per_unit', 'total_price']));
+
+        return response()->json($sale);
+    }
+
+    public function destroy($id)
+    {
+        $sale = Sale::findOrFail($id);
+        $sale->delete();
+
+        return response()->json(null, 204);
+    }
+
+    public function show($id)
+    {
+        $sale = Sale::findOrFail($id);
+
+        return response()->json($sale);
+    }
+
+    public function getSalesByCustomer($customerId)
+    {
+        $sales = Sale::where('customer_id', $customerId)->get();
+
+        return response()->json($sales);
+    }
+}
