@@ -14,6 +14,10 @@ class Order extends Model
         'status',
         'quantity',
         'alamat',
+        'payment_method',
+        'payment_proof',
+        'payment_verified_at',
+        'payment_verified_by'
     ];
 
     // Relationship with Customer
@@ -26,5 +30,10 @@ class Order extends Model
     public function sales()
     {
         return $this->hasMany(Sale::class, 'order_id', 'id');
+    }
+
+    public function verifiedBy()
+    {
+        return $this->belongsTo(User::class, 'payment_verified_by');
     }
 }

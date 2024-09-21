@@ -155,10 +155,40 @@ class OrderController extends Controller
         $sale->save();
 
         // Update order status
-        $order->status = 'processed';
+        $order->status = 'awaiting_payment';
         $order->save();
 
         return ResponseFormatter::success(['order' => $order, 'sale' => $sale, 'transaction' => $transaction], 'Order berhasil diproses');
+    }
+
+    public function submitPaymentProof(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+        $request->validate([
+            'payment_method' => 'required|in:cash,transfer',
+            'payment_proof' => 'required_if:payment_method,transfer|file|image',
+        ]);
+
+        $order->payment_method = $request->payment_method;
+        if ($request->hasFile('payment_proof')) {
+            $path = $request->file('payment_proof')->store('payment_proofs');
+            $order->payment_proof = $path;
+        }
+        $order->status = 'payment_verification';
+        $order->save();
+
+        return ResponseFormatter::success($order, 'Bukti pembayaran berhasil disubmit');
+    }
+
+    public function verifyPayment(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+        $order->status = 'completed';
+        $order->payment_verified_at = now();
+        $order->payment_verified_by = auth()->id();
+        $order->save();
+
+        return ResponseFormatter::success($order, 'Pembayaran berhasil diverifikasi');
     }
 
     public function completeOrder($id)
