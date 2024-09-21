@@ -78,12 +78,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
         Route::get('orders', [OrderController::class, 'all']);
-        Route::get('/orders/{customer_id}', [OrderController::class, 'getOrdersByCustomer']);
-        Route::post('/orders', [OrderController::class, 'store']);
-        Route::get('/order/{id}', [OrderController::class, 'show']);
-        Route::put('/orders/{id}', [OrderController::class, 'update']);
-        Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
-        Route::post('/orders/{id}/order', [OrderController::class, 'processOrder']);
+        Route::get('/orders/customer/{customer_id}', [OrderController::class, 'getOrdersByCustomer']);
+        Route::post('orders', [OrderController::class, 'store']);
+        Route::get('orders/{id}', [OrderController::class, 'show']);
+        Route::put('orders/{id}', [OrderController::class, 'update']);
+        Route::delete('orders/{id}', [OrderController::class, 'destroy']);
+        Route::post('/orders/{id}/set-price', [OrderController::class, 'setPricePerUnit']);
+        Route::post('/orders/{id}/process', [OrderController::class, 'processOrder']);
+        Route::post('/orders/{id}/submit-payment', [OrderController::class, 'submitPaymentProof']);
+        Route::post('/orders/{id}/verify-payment', [OrderController::class, 'verifyPayment']);
     });
 
     Route::middleware('role:Pimpinan')->group(function () {

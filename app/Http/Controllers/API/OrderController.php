@@ -128,6 +128,7 @@ class OrderController extends Controller
             'quantity' => $order->quantity,
             'price_per_unit' => $validatedData['price_per_unit'],
             'total_price' => $order->quantity * $validatedData['price_per_unit'],
+            'transaction_id' => null
         ]);
 
         return ResponseFormatter::success(['order' => $order, 'sale' => $sale], 'Harga per unit berhasil diatur');
@@ -146,7 +147,7 @@ class OrderController extends Controller
         $transaction = Transaction::create([
             'user_id' => auth()->id(),
             'type' => 'sale',
-            'amount' => $sale->totalPrice, // Menggunakan total harga
+            'amount' => $sale->total_price, // Menggunakan total harga
             'keterangan' => 'Sale of chickens',
         ]);
 
@@ -191,19 +192,19 @@ class OrderController extends Controller
         return ResponseFormatter::success($order, 'Pembayaran berhasil diverifikasi');
     }
 
-    public function completeOrder($id)
-    {
-        $order = Order::findOrFail($id);
+    // public function completeOrder($id)
+    // {
+    //     $order = Order::findOrFail($id);
 
-        if ($order->status !== 'processed') {
-            return ResponseFormatter::error(null, 'Order belum diproses', 400);
-        }
+    //     if ($order->status !== 'processed') {
+    //         return ResponseFormatter::error(null, 'Order belum diproses', 400);
+    //     }
 
-        $order->status = 'completed';
-        $order->save();
+    //     $order->status = 'completed';
+    //     $order->save();
 
-        return ResponseFormatter::success($order, 'Order berhasil diselesaikan');
-    }
+    //     return ResponseFormatter::success($order, 'Order berhasil diselesaikan');
+    // }
 
     // Update an order
     public function update(Request $request, $id)
