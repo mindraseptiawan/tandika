@@ -107,16 +107,73 @@ class OrderController extends Controller
         $orderWithCustomer = Order::with('customer')->find($order->id);
 
         // Kembalikan respons dalam format yang diinginkan
-        $response = [
-            'success' => true,
-            'message' => 'Order berhasil dibuat',
-            'data' => $orderWithCustomer
-        ];
-
-        return response()->json($response, 201);
+        return ResponseFormatter::success($orderWithCustomer, 'Order berhasil dibuat', 201);
     }
 
+    public function setPricePerUnit(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
 
+        $validatedData = $request->validate([
+            'price_per_unit' => 'required|numeric|min:0',
+        ]);
+
+        $order->status = 'price_set';
+        $order->save();
+
+        // Buat Sale baru dengan harga yang ditentukan
+        $sale = Sale::create([
+            'order_id' => $order->id,
+            'customer_id' => $order->customer_id,
+            'quantity' => $order->quantity,
+            'price_per_unit' => $validatedData['price_per_unit'],
+            'total_price' => $order->quantity * $validatedData['price_per_unit'],
+        ]);
+
+        return ResponseFormatter::success(['order' => $order, 'sale' => $sale], 'Harga per unit berhasil diatur');
+    }
+
+    public function processOrder(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+        $sale = Sale::where('order_id', $order->id)->firstOrFail();
+
+        if ($order->status !== 'price_set') {
+            return ResponseFormatter::error(null, 'Harga per unit belum diatur', 400);
+        }
+
+        // Create a transaction
+        $transaction = Transaction::create([
+            'user_id' => auth()->id(),
+            'type' => 'sale',
+            'amount' => $sale->totalPrice, // Menggunakan total harga
+            'keterangan' => 'Sale of chickens',
+        ]);
+
+        // Create a sale with the calculated total price
+        $sale->transaction_id = $transaction->id;
+        $sale->save();
+
+        // Update order status
+        $order->status = 'processed';
+        $order->save();
+
+        return ResponseFormatter::success(['order' => $order, 'sale' => $sale, 'transaction' => $transaction], 'Order berhasil diproses');
+    }
+
+    public function completeOrder($id)
+    {
+        $order = Order::findOrFail($id);
+
+        if ($order->status !== 'processed') {
+            return ResponseFormatter::error(null, 'Order belum diproses', 400);
+        }
+
+        $order->status = 'completed';
+        $order->save();
+
+        return ResponseFormatter::success($order, 'Order berhasil diselesaikan');
+    }
 
     // Update an order
     public function update(Request $request, $id)
@@ -148,39 +205,5 @@ class OrderController extends Controller
     }
 
     // Process an order (this could be expanded with more logic)
-    public function processOrder(Request $request, $id)
-    {
-        $order = Order::findOrFail($id);
 
-        $validatedData = $request->validate([
-            'price_per_unit' => 'required|numeric|min:0', // Manual input for price per unit
-        ]);
-
-        // Hitung total price berdasarkan price per unit yang dimasukkan operator
-        $totalPrice = $validatedData['price_per_unit'] * $order->quantity;
-
-        // Create a transaction
-        $transaction = Transaction::create([
-            'user_id' => auth()->id(),
-            'type' => 'sale',
-            'amount' => $totalPrice, // Menggunakan total harga
-            'keterangan' => 'Sale of chickens',
-        ]);
-
-        // Create a sale with the calculated total price
-        Sale::create([
-            'transaction_id' => $transaction->id,
-            'customer_id' => $order->customer_id,
-            'order_id' => $order->id,
-            'quantity' => $order->quantity, // Directly use the quantity from the order
-            'price_per_unit' => $validatedData['price_per_unit'], // Use price per unit from the request
-            'total_price' => $totalPrice, // Calculated total price
-        ]);
-
-        // Update order status
-        $order->status = 'processed';
-        $order->save();
-
-        return response()->json(['message' => 'Order processed successfully', 'transaction' => $transaction]);
-    }
 }
