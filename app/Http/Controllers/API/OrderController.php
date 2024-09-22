@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
 use App\Models\Order;
 use App\Models\Sale;
 use App\Models\Transaction;
@@ -114,25 +115,54 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
+        if ($order->status !== 'pending') {
+            return ResponseFormatter::error(null, 'Harga hanya dapat diatur untuk order dengan status pending', 400);
+        }
+
         $validatedData = $request->validate([
             'price_per_unit' => 'required|numeric|min:0',
         ]);
 
-        $order->status = 'price_set';
-        $order->save();
+        DB::beginTransaction();
+        try {
+            $order->status = 'price_set';
+            $order->save();
 
-        // Buat Sale baru dengan harga yang ditentukan
-        $sale = Sale::create([
-            'order_id' => $order->id,
-            'customer_id' => $order->customer_id,
-            'quantity' => $order->quantity,
-            'price_per_unit' => $validatedData['price_per_unit'],
-            'total_price' => $order->quantity * $validatedData['price_per_unit'],
-            'transaction_id' => null
-        ]);
+            // Buat transaksi awal dengan amount null
+            $transaction = Transaction::create([
+                'user_id' => auth()->id(),
+                'type' => 'sale',
+                'amount' => null, // Amount masih null
+                'keterangan' => 'Sale pending amount',
+            ]);
 
-        return ResponseFormatter::success(['order' => $order, 'sale' => $sale], 'Harga per unit berhasil diatur');
+            // Cek apakah sudah ada sale untuk order ini
+            $sale = Sale::where('order_id', $order->id)->first();
+            if (!$sale) {
+                // Buat Sale baru jika belum ada
+                $sale = Sale::create([
+                    'order_id' => $order->id,
+                    'customer_id' => $order->customer_id,
+                    'quantity' => $order->quantity,
+                    'price_per_unit' => $validatedData['price_per_unit'],
+                    'total_price' => $order->quantity * $validatedData['price_per_unit'],
+                    'transaction_id' => $transaction->id, // Set transaction_id pada sale
+                ]);
+            } else {
+                // Update sale yang sudah ada
+                $sale->price_per_unit = $validatedData['price_per_unit'];
+                $sale->total_price = $order->quantity * $validatedData['price_per_unit'];
+                $sale->save();
+            }
+
+            DB::commit();
+            return ResponseFormatter::success(['order' => $order, 'sale' => $sale, 'transaction' => $transaction], 'Harga per unit berhasil diatur');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return ResponseFormatter::error(null, 'Terjadi kesalahan saat mengatur harga: ' . $e->getMessage(), 500);
+        }
     }
+
 
     public function processOrder(Request $request, $id)
     {
@@ -140,45 +170,62 @@ class OrderController extends Controller
         $sale = Sale::where('order_id', $order->id)->firstOrFail();
 
         if ($order->status !== 'price_set') {
-            return ResponseFormatter::error(null, 'Harga per unit belum diatur', 400);
+            return ResponseFormatter::error(null, 'Order harus dalam status price_set untuk diproses', 400);
         }
 
-        // Create a transaction
-        $transaction = Transaction::create([
-            'user_id' => auth()->id(),
-            'type' => 'sale',
-            'amount' => $sale->total_price, // Menggunakan total harga
-            'keterangan' => 'Sale of chickens',
-        ]);
+        DB::beginTransaction();
+        try {
+            // Cek apakah sudah ada transaksi untuk sale ini
+            if (!$sale->transaction_id) {
+                return ResponseFormatter::error(null, 'Transaksi belum dibuat. Silakan set harga per unit terlebih dahulu.', 400);
+            }
 
-        // Create a sale with the calculated total price
-        $sale->transaction_id = $transaction->id;
-        $sale->save();
+            // Ambil transaksi yang sudah dibuat saat set price
+            $transaction = Transaction::findOrFail($sale->transaction_id);
 
-        // Update order status
-        $order->status = 'awaiting_payment';
-        $order->save();
+            // Update amount di transaksi dengan total harga sale
+            $transaction->amount = $sale->total_price;
+            $transaction->save();
 
-        return ResponseFormatter::success(['order' => $order, 'sale' => $sale, 'transaction' => $transaction], 'Order berhasil diproses');
+            // Update order status
+            $order->status = 'awaiting_payment';
+            $order->save();
+
+            DB::commit();
+            return ResponseFormatter::success(['order' => $order, 'sale' => $sale, 'transaction' => $transaction], 'Order berhasil diproses');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return ResponseFormatter::error(null, 'Terjadi kesalahan saat memproses order: ' . $e->getMessage(), 500);
+        }
     }
+
 
     public function submitPaymentProof(Request $request, $id)
     {
         $order = Order::findOrFail($id);
         $request->validate([
             'payment_method' => 'required|in:cash,transfer',
-            'payment_proof' => 'required_if:payment_method,transfer|file|image',
+            'payment_proof' => 'nullable|file|image|max:2048', // Optional for both methods, max 2MB
         ]);
 
         $order->payment_method = $request->payment_method;
+
         if ($request->hasFile('payment_proof')) {
             $path = $request->file('payment_proof')->store('payment_proofs');
             $order->payment_proof = $path;
+        } else {
+            $order->payment_proof = null; // Clear any existing proof if no new file is uploaded
         }
+
         $order->status = 'payment_verification';
         $order->save();
 
-        return ResponseFormatter::success($order, 'Bukti pembayaran berhasil disubmit');
+        $message = 'Bukti pembayaran berhasil disubmit';
+        if ($request->payment_method === 'transfer' && !$request->hasFile('payment_proof')) {
+            $message .= '. Namun, disarankan untuk menyertakan bukti transfer untuk mempercepat proses verifikasi.';
+        }
+
+        return ResponseFormatter::success($order, $message);
     }
 
     public function verifyPayment(Request $request, $id)
