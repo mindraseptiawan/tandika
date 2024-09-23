@@ -82,6 +82,56 @@ class KandangController extends Controller
         );
     }
 
+    public function tambahAyam(Request $request, $id)
+    {
+        $request->validate([
+            'jumlah_tambah' => 'required|integer|min:1',
+        ]);
+
+        $kandang = Kandang::findOrFail($id);
+
+        $kandang->jumlah_real += $request->jumlah_tambah;
+
+        // Opsional: Periksa apakah jumlah_real melebihi kapasitas
+        if ($kandang->jumlah_real > $kandang->kapasitas) {
+            return response()->json([
+                'message' => 'Peringatan: Jumlah ayam melebihi kapasitas kandang.',
+                'jumlah_real' => $kandang->jumlah_real,
+                'kapasitas' => $kandang->kapasitas,
+            ], 400);
+        }
+
+        $kandang->save();
+
+        return response()->json([
+            'message' => 'Berhasil menambahkan ayam',
+            'kandang' => $kandang,
+        ]);
+    }
+    public function kurangAyam(Request $request, $id)
+    {
+        $request->validate([
+            'jumlah_kurang' => 'required|integer|min:1',
+        ]);
+
+        $kandang = Kandang::findOrFail($id);
+
+        if ($kandang->jumlah_real < $request->jumlah_kurang) {
+            return response()->json([
+                'message' => 'Error: Jumlah ayam yang akan dikurangi melebihi jumlah ayam yang ada di kandang.',
+                'jumlah_real' => $kandang->jumlah_real,
+                'jumlah_kurang' => $request->jumlah_kurang,
+            ], 400);
+        }
+
+        $kandang->jumlah_real -= $request->jumlah_kurang;
+        $kandang->save();
+
+        return response()->json([
+            'message' => 'Berhasil mengurangi ayam',
+            'kandang' => $kandang,
+        ]);
+    }
     public function update(Request $request, $id)
     {
 

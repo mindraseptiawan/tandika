@@ -35,4 +35,8 @@ class Sale extends Model
     {
         return $this->belongsTo(Customer::class, 'customer_id', 'id');
     }
+    public function stockMovements()
+    {
+        return $this->morphMany(StockMovement::class, 'reference');
+    }
 }

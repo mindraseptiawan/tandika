@@ -34,6 +34,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('kandang', [KandangController::class, 'store']);
         Route::put('kandang/{id}', [KandangController::class, 'update']);
         Route::delete('kandang/{id}', [KandangController::class, 'destroy']);
+        Route::post('kandang/{id}/tambah-ayam', [KandangController::class, 'tambahAyam']);
+        Route::post('kandang/{id}/kurang-ayam', [KandangController::class, 'kurangAyam']);
 
 
         Route::post('pemeliharaan', [PemeliharaanController::class, 'create']);
