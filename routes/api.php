@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('orders/{id}', [OrderController::class, 'show']);
         Route::put('orders/{id}', [OrderController::class, 'update']);
         Route::delete('orders/{id}', [OrderController::class, 'destroy']);
+        Route::get('orders/status/{status}', [OrderController::class, 'getOrdersByStatus']);
         Route::post('/orders/{id}/set-price', [OrderController::class, 'setPricePerUnit']);
         Route::post('/orders/{id}/process', [OrderController::class, 'processOrder']);
         Route::post('/orders/{id}/submit-payment', [OrderController::class, 'submitPaymentProof']);

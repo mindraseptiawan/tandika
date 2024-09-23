@@ -72,6 +72,17 @@ class OrderController extends Controller
         );
     }
 
+    public function getOrdersByStatus(Request $request, $status)
+    {
+        $orders = Order::where('status', $status)->get();
+
+        if ($orders->isEmpty()) {
+            return ResponseFormatter::error(null, 'Data order tidak ditemukan', 404);
+        }
+
+        return ResponseFormatter::success($orders, 'Data order berhasil diambil');
+    }
+
     // Store a new order
     public function store(Request $request)
     {
