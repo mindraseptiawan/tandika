@@ -27,8 +27,10 @@ class SupplierController extends Controller
             'alamat' => $request->alamat,
             'phone' => $request->phone,
         ]);
-
-        return response()->json($supplier, 201);
+        return ResponseFormatter::success(
+            $supplier,
+            'Data Supplier Berhasil di ambil'
+        );
     }
 
     public function update($id, Request $request)

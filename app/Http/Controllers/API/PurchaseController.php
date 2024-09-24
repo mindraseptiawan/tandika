@@ -9,6 +9,7 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\StockMovement;
 use App\Models\Transaction;
+use App\Models\Kandang;
 
 
 class PurchaseController extends Controller
@@ -24,7 +25,7 @@ class PurchaseController extends Controller
             'supplier_phone' => 'required|string|max:15',
             'quantity' => 'required|numeric',
             'price_per_unit' => 'required|numeric',
-            'kandang_id' => 'required|exists:kandangs,id',
+            'kandang_id' => 'required|exists:kandang,id',
         ]);
 
         // Cek apakah supplier sudah ada berdasarkan nomor telepon
@@ -67,7 +68,21 @@ class PurchaseController extends Controller
             'notes' => "Pembelian ayam ke kandang #{$request->kandang_id}",
         ]);
 
-        return response()->json($purchase, 201);
+        // Perbarui jumlah real di kandang
+        $kandang = Kandang::findOrFail($request->kandang_id);
+
+        if ($kandang->kapasitas < $kandang->jumlah_real + $request->quantity) {
+            return ResponseFormatter::error(null, 'Kapasitas di kandang tidak mencukupi', 400);
+        }
+
+        // Tambah stok di kandang
+        $kandang->jumlah_real += $request->quantity;
+        $kandang->save();
+
+        return ResponseFormatter::success(
+            ['purchase' => $purchase, 'transaction' => $transaction],
+            'Data Purchase berhasil ditambahkan'
+        );
     }
 
     public function update($id, Request $request)

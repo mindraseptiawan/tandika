@@ -10,6 +10,7 @@ use App\Http\Controllers\API\PurchaseController;
 use App\Http\Controllers\API\TransactionController;
 use App\Http\Controllers\API\CustomerController;
 use App\Http\Controllers\API\SupplierController;
+use App\Http\Controllers\API\StockMovementController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -38,6 +39,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('pemeliharaan', [PemeliharaanController::class, 'create']);
         Route::put('pemeliharaan/{id}', [PemeliharaanController::class, 'update']);
         Route::delete('pemeliharaan/{id}', [PemeliharaanController::class, 'destroy']);
+
+        Route::get('stocks/{kandang_id}', [StockMovementController::class, 'getByKandangId']);
+
 
         Route::get('suppliers', [SupplierController::class, 'all']);
         Route::get('suppliers/{id}', [SupplierController::class, 'show']);

@@ -70,7 +70,7 @@ class OrderController extends Controller
 
         return ResponseFormatter::success(
             $orders,
-            'Data Pemeliharaan berhasil diambil'
+            'Data Order berhasil diambil'
         );
     }
 
