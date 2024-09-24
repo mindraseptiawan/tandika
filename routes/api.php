@@ -40,7 +40,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('pemeliharaan/{id}', [PemeliharaanController::class, 'update']);
         Route::delete('pemeliharaan/{id}', [PemeliharaanController::class, 'destroy']);
 
-        Route::get('stocks/{kandang_id}', [StockMovementController::class, 'getByKandangId']);
+        Route::get('stocks/kandang/{kandang_id}', [StockMovementController::class, 'getByKandangId']);
+        Route::get('stocks', [StockMovementController::class, 'all']);
 
 
         Route::get('suppliers', [SupplierController::class, 'all']);
