@@ -18,31 +18,18 @@ return new class extends Migration
             $table->integer('quantity');
             $table->enum('reason', ['purchase', 'sale', 'death', 'transfer', 'other']);
             $table->unsignedBigInteger('reference_id')->nullable();
+            $table->string('reference_type')->nullable();  // Tambahkan ini
             $table->text('notes')->nullable();
             $table->timestamps();
+
             $table->foreign('kandang_id')->references('id')->on('kandang')->onDelete('cascade');
 
-            $table->foreign('reference_id')
-                ->references('id')
-                ->on('purchases')
-                ->onDelete('set null')
-                ->name('stock_movements_purchase_foreign');
-
-            $table->foreign('reference_id')
-                ->references('id')
-                ->on('sales')
-                ->onDelete('set null')
-                ->name('stock_movements_sale_foreign');
+            // Hapus foreign key constraints untuk reference_id
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::table('stocks_movement', function (Blueprint $table) {
-            //
-        });
+        Schema::dropIfExists('stock_movements');
     }
 };

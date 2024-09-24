@@ -4,9 +4,11 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
+use App\Models\Kandang;
 use App\Models\Order;
 use App\Models\Sale;
 use App\Models\Transaction;
+use App\Models\StockMovement;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 use App\Helpers\ResponseFormatter;
@@ -184,33 +186,95 @@ class OrderController extends Controller
             return ResponseFormatter::error(null, 'Order harus dalam status price_set untuk diproses', 400);
         }
 
+        $request->validate([
+            'kandang_id' => 'required|exists:kandang,id',
+        ]);
+
         DB::beginTransaction();
         try {
-            // Cek apakah sudah ada transaksi untuk sale ini
             if (!$sale->transaction_id) {
                 return ResponseFormatter::error(null, 'Transaksi belum dibuat. Silakan set harga per unit terlebih dahulu.', 400);
             }
 
-            // Ambil transaksi yang sudah dibuat saat set price
-            $transaction = Transaction::findOrFail($sale->transaction_id);
+            $kandang = Kandang::findOrFail($request->kandang_id);
 
-            // Update amount di transaksi dengan total harga sale
+            if ($kandang->jumlah_real < $order->quantity) {
+                return ResponseFormatter::error(null, 'Stok di kandang tidak mencukupi', 400);
+            }
+
+            // Kurangi stok di kandang
+            $kandang->jumlah_real -= $order->quantity;
+            $kandang->save();
+
+            // Catat pergerakan stok
+            $stockMovement = StockMovement::create([
+                'kandang_id' => $kandang->id,
+                'type' => 'out',
+                'quantity' => $order->quantity,
+                'reason' => 'sale',
+                'reference_id' => $sale->id,
+                'reference_type' => Sale::class,
+                'notes' => "Pengurangan stok untuk order #{$order->id}",
+            ]);
+
+            $transaction = Transaction::findOrFail($sale->transaction_id);
             $transaction->amount = $sale->total_price;
             $transaction->save();
 
-            // Update order status
+            // Update order status dan kandang_id
             $order->status = 'awaiting_payment';
+            $order->kandang_id = $kandang->id;
             $order->save();
 
             DB::commit();
-            return ResponseFormatter::success(['order' => $order, 'sale' => $sale, 'transaction' => $transaction], 'Order berhasil diproses');
+            return ResponseFormatter::success([
+                'order' => $order,
+                'sale' => $sale,
+                'transaction' => $transaction,
+                'stock_movement' => $stockMovement
+            ], 'Order berhasil diproses');
         } catch (\Exception $e) {
             DB::rollBack();
             return ResponseFormatter::error(null, 'Terjadi kesalahan saat memproses order: ' . $e->getMessage(), 500);
         }
     }
 
+    public function cancelOrder(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+        $sale = Sale::where('order_id', $order->id)->firstOrFail();
 
+        if ($order->status !== 'awaiting_payment') {
+            return ResponseFormatter::error(null, 'Order harus dalam status awaiting_payment untuk dibatalkan', 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Revert stock reduction
+            $kandang = Kandang::findOrFail($order->kandang_id);
+            $kandang->jumlah_real += $order->quantity;
+            $kandang->save();
+
+            // Delete the corresponding StockMovement record
+            $stockMovement = StockMovement::where('reference_id', $sale->id)
+                ->where('reference_type', Sale::class)
+                ->where('type', 'out')
+                ->first();
+            $stockMovement->delete();
+
+
+            // Revert order status and kandang_id
+            $order->status = 'price_set';
+            $order->kandang_id = null;
+            $order->save();
+
+            DB::commit();
+            return ResponseFormatter::success(['order' => $order], 'Order berhasil dibatalkan');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return ResponseFormatter::error(null, 'Terjadi kesalahan saat membatalkan order: ' . $e->getMessage(), 500);
+        }
+    }
     public function submitPaymentProof(Request $request, $id)
     {
         $order = Order::findOrFail($id);

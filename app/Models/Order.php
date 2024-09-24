@@ -17,7 +17,8 @@ class Order extends Model
         'payment_method',
         'payment_proof',
         'payment_verified_at',
-        'payment_verified_by'
+        'payment_verified_by',
+        'kandang_id'
     ];
 
     // Relationship with Customer
@@ -35,5 +36,9 @@ class Order extends Model
     public function verifiedBy()
     {
         return $this->belongsTo(User::class, 'payment_verified_by');
+    }
+    public function kandang()
+    {
+        return $this->belongsTo(Kandang::class);
     }
 }

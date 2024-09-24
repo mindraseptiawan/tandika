@@ -34,9 +34,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('kandang', [KandangController::class, 'store']);
         Route::put('kandang/{id}', [KandangController::class, 'update']);
         Route::delete('kandang/{id}', [KandangController::class, 'destroy']);
-        Route::post('kandang/{id}/tambah-ayam', [KandangController::class, 'tambahAyam']);
-        Route::post('kandang/{id}/kurang-ayam', [KandangController::class, 'kurangAyam']);
-
 
         Route::post('pemeliharaan', [PemeliharaanController::class, 'create']);
         Route::put('pemeliharaan/{id}', [PemeliharaanController::class, 'update']);
@@ -88,6 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('orders/status/{status}', [OrderController::class, 'getOrdersByStatus']);
         Route::post('/orders/{id}/set-price', [OrderController::class, 'setPricePerUnit']);
         Route::post('/orders/{id}/process', [OrderController::class, 'processOrder']);
+        Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder']);
         Route::post('/orders/{id}/submit-payment', [OrderController::class, 'submitPaymentProof']);
         Route::post('/orders/{id}/verify-payment', [OrderController::class, 'verifyPayment']);
     });

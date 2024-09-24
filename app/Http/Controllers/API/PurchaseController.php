@@ -6,6 +6,10 @@ use App\Helpers\ResponseFormatter;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Purchase;
+use App\Models\Supplier;
+use App\Models\StockMovement;
+use App\Models\Transaction;
+
 
 class PurchaseController extends Controller
 {
@@ -16,14 +20,52 @@ class PurchaseController extends Controller
     public function create(Request $request)
     {
         $request->validate([
-            'transaction_id' => 'required|exists:transactions,id',
-            'supplier_id' => 'required|exists:suppliers,id',
+            'supplier_name' => 'required|string|max:255',
+            'supplier_phone' => 'required|string|max:15',
             'quantity' => 'required|numeric',
             'price_per_unit' => 'required|numeric',
-            'total_price' => 'required|numeric'
+            'kandang_id' => 'required|exists:kandangs,id',
         ]);
 
-        $purchase = Purchase::create($request->all());
+        // Cek apakah supplier sudah ada berdasarkan nomor telepon
+        $supplier = Supplier::where('phone', $request->supplier_phone)->first();
+
+        if (!$supplier) {
+            // Jika supplier belum ada, buat supplier baru
+            $supplier = Supplier::create([
+                'name' => $request->supplier_name,
+                'phone' => $request->supplier_phone,
+            ]);
+        }
+
+        // Buat transaksi baru
+        $transaction = Transaction::create([
+            'user_id' => auth()->id(),
+            'type' => 'purchase',
+            'amount' => $request->quantity * $request->price_per_unit,
+            'keterangan' => 'Purchase',
+        ]);
+
+        // Buat purchase baru
+        $purchase = Purchase::create([
+            'transaction_id' => $transaction->id,
+            'supplier_id' => $supplier->id,
+            'quantity' => $request->quantity,
+            'price_per_unit' => $request->price_per_unit,
+            'total_price' => $request->quantity * $request->price_per_unit,
+            'kandang_id' => $request->kandang_id,
+        ]);
+
+        // Create a new StockMovement record
+        $stockMovement = StockMovement::create([
+            'kandang_id' => $request->kandang_id,
+            'type' => 'in',
+            'quantity' => $request->quantity,
+            'reason' => 'purchase',
+            'reference_id' => $purchase->id,
+            'reference_type' => Purchase::class,
+            'notes' => "Pembelian ayam ke kandang #{$request->kandang_id}",
+        ]);
 
         return response()->json($purchase, 201);
     }
