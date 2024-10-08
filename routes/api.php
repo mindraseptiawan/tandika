@@ -11,6 +11,7 @@ use App\Http\Controllers\API\TransactionController;
 use App\Http\Controllers\API\CustomerController;
 use App\Http\Controllers\API\SupplierController;
 use App\Http\Controllers\API\StockMovementController;
+use App\Http\Controllers\API\CashflowController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -93,6 +94,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder']);
         Route::post('/orders/{id}/submit-payment', [OrderController::class, 'submitPaymentProof']);
         Route::post('/orders/{id}/verify-payment', [OrderController::class, 'verifyPayment']);
+        Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder']);
     });
 
     Route::middleware('role:Pimpinan')->group(function () {
@@ -100,5 +102,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('user/{Id}/role', [UserController::class, 'assignRole']);
         Route::delete('user/{user}', [UserController::class, 'deleteUser']);
         Route::put('user/{Id}/deactivate', [UserController::class, 'deactivateUser']);
+
+
+        Route::get('cashflows', [CashflowController::class, 'index']);
     });
 });

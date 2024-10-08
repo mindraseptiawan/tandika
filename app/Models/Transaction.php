@@ -33,4 +33,10 @@ class Transaction extends Model
     {
         return $this->hasOne(Sale::class, 'transaction_id', 'id');
     }
+    // Transaction.php
+
+    public function cashflow()
+    {
+        return $this->hasOne(Cashflow::class, 'transaction_id', 'id');
+    }
 }

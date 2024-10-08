@@ -10,6 +10,7 @@ use App\Models\Sale;
 use App\Models\Transaction;
 use App\Models\StockMovement;
 use App\Models\Customer;
+use App\Models\CashFlow;
 use Illuminate\Http\Request;
 use App\Helpers\ResponseFormatter;
 
@@ -43,18 +44,6 @@ class OrderController extends Controller
                 'Data Orderan berhasil diambil'
             );
         }
-        // // Ambil data orders dengan relasi customer
-        // $orders = Order::with('customer')->get();
-
-        // // Siapkan respons dengan struktur seperti di kode kedua
-        // $response = [
-        //     'success' => true,
-        //     'message' => 'Sukses menampilkan data',
-        //     'data' => $orders
-        // ];
-
-        // // Return respons JSON
-        // return response()->json($response);
     }
     public function getOrdersByCustomer($customerId)
     {
@@ -149,6 +138,12 @@ class OrderController extends Controller
                 'keterangan' => 'Sale pending amount',
             ]);
 
+            $cashflow = CashFlow::create([
+                'transaction_id' => $transaction->id,
+                'type' => 'in',
+                'amount' => null, // Amount masih null
+                'balance' => CashFlow::latest()->first()->balance ?? 0,
+            ]);
             // Cek apakah sudah ada sale untuk order ini
             $sale = Sale::where('order_id', $order->id)->first();
             if (!$sale) {
@@ -169,7 +164,7 @@ class OrderController extends Controller
             }
 
             DB::commit();
-            return ResponseFormatter::success(['order' => $order, 'sale' => $sale, 'transaction' => $transaction], 'Harga per unit berhasil diatur');
+            return ResponseFormatter::success(['order' => $order, 'sale' => $sale, 'transaction' => $transaction, 'cashflow' => $cashflow], 'Harga per unit berhasil diatur');
         } catch (\Exception $e) {
             DB::rollBack();
             return ResponseFormatter::error(null, 'Terjadi kesalahan saat mengatur harga: ' . $e->getMessage(), 500);
@@ -217,9 +212,7 @@ class OrderController extends Controller
                 'notes' => "Pengurangan stok untuk order #{$order->id}",
             ]);
 
-            $transaction = Transaction::findOrFail($sale->transaction_id);
-            $transaction->amount = $sale->total_price;
-            $transaction->save();
+
 
             // Update order status dan kandang_id
             $order->status = 'awaiting_payment';
@@ -230,7 +223,7 @@ class OrderController extends Controller
             return ResponseFormatter::success([
                 'order' => $order,
                 'sale' => $sale,
-                'transaction' => $transaction,
+
                 'stock_movement' => $stockMovement
             ], 'Order berhasil diproses');
         } catch (\Exception $e) {
@@ -242,30 +235,84 @@ class OrderController extends Controller
     public function cancelOrder(Request $request, $id)
     {
         $order = Order::findOrFail($id);
-        $sale = Sale::where('order_id', $order->id)->firstOrFail();
 
-        if ($order->status !== 'awaiting_payment') {
-            return ResponseFormatter::error(null, 'Order harus dalam status awaiting_payment untuk dibatalkan', 400);
+        if ($order->status === 'completed') {
+            return ResponseFormatter::error(null, 'Order yang sudah selesai tidak dapat dibatalkan', 400);
         }
 
         DB::beginTransaction();
         try {
-            // Revert stock reduction
-            $kandang = Kandang::findOrFail($order->kandang_id);
-            $kandang->jumlah_real += $order->quantity;
-            $kandang->save();
+            switch ($order->status) {
+                case 'pending':
+                    // No additional action needed for pending orders
+                    break;
 
-            // Delete the corresponding StockMovement record
-            $stockMovement = StockMovement::where('reference_id', $sale->id)
-                ->where('reference_type', Sale::class)
-                ->where('type', 'out')
-                ->first();
-            $stockMovement->delete();
+                case 'price_set':
+                    // Delete associated Sale
+                    $sale = Sale::where('order_id', $order->id)->first();
+                    if ($sale) {
+                        // Delete associated Transaction and CashFlow
+                        if ($sale->transaction_id) {
+                            CashFlow::where('transaction_id', $sale->transaction_id)->delete();
+                            Transaction::destroy($sale->transaction_id);
+                        }
+                        $sale->delete();
+                    }
+                    break;
 
+                case 'awaiting_payment':
+                    // Revert stock reduction
+                    $kandang = Kandang::findOrFail($order->kandang_id);
+                    $kandang->jumlah_real += $order->quantity;
+                    $kandang->save();
 
-            // Revert order status and kandang_id
-            $order->status = 'price_set';
-            $order->kandang_id = null;
+                    // Delete StockMovement record
+                    StockMovement::where('reference_id', $order->id)
+                        ->where('reference_type', Order::class)
+                        ->where('type', 'out')
+                        ->delete();
+
+                    // Delete associated Sale, Transaction, and CashFlow
+                    $sale = Sale::where('order_id', $order->id)->first();
+                    if ($sale) {
+                        if ($sale->transaction_id) {
+                            CashFlow::where('transaction_id', $sale->transaction_id)->delete();
+                            Transaction::destroy($sale->transaction_id);
+                        }
+                        $sale->delete();
+                    }
+                    break;
+
+                case 'payment_verification':
+                    // Similar to 'awaiting_payment', but we might want to keep a record of the payment proof
+                    $kandang = Kandang::findOrFail($order->kandang_id);
+                    $kandang->jumlah_real += $order->quantity;
+                    $kandang->save();
+
+                    StockMovement::where('reference_id', $order->id)
+                        ->where('reference_type', Order::class)
+                        ->where('type', 'out')
+                        ->delete();
+
+                    $sale = Sale::where('order_id', $order->id)->first();
+                    if ($sale) {
+                        if ($sale->transaction_id) {
+                            CashFlow::where('transaction_id', $sale->transaction_id)->delete();
+                            Transaction::destroy($sale->transaction_id);
+                        }
+                        $sale->delete();
+                    }
+                    // We're keeping the payment_proof in the order record for reference
+                    break;
+
+                default:
+                    throw new \Exception('Invalid order status for cancellation');
+            }
+
+            // Update order status and add cancellation details
+            $order->status = 'cancelled';
+            $order->created_at = now();
+            $order->payment_verified_by = auth()->id();
             $order->save();
 
             DB::commit();
@@ -306,11 +353,19 @@ class OrderController extends Controller
     public function verifyPayment(Request $request, $id)
     {
         $order = Order::findOrFail($id);
+        $sale = Sale::where('order_id', $order->id)->firstOrFail();
         $order->status = 'completed';
         $order->payment_verified_at = now();
         $order->payment_verified_by = auth()->id();
         $order->save();
+        $transaction = Transaction::findOrFail($sale->transaction_id);
+        $transaction->amount = $sale->total_price;
+        $transaction->save();
 
+        $cashflow = CashFlow::where('transaction_id', $sale->transaction_id)->firstOrFail();
+        $cashflow->amount = $sale->total_price;
+        $cashflow->balance = $cashflow->balance + $sale->total_price; // Update balance
+        $cashflow->save();
         return ResponseFormatter::success($order, 'Pembayaran berhasil diverifikasi');
     }
 
