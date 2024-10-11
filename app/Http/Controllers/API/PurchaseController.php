@@ -18,7 +18,12 @@ class PurchaseController extends Controller
 {
     public function all()
     {
-        return Purchase::all();
+        $purchase = Purchase::with('supplier')->get();
+
+        return ResponseFormatter::success(
+            $purchase,
+            'Data pembelian berhasil diambil'
+        );
     }
     public function create(Request $request)
     {
@@ -136,7 +141,7 @@ class PurchaseController extends Controller
 
     public function show($id)
     {
-        $purchase = Purchase::findOrFail($id);
+        $purchase = Purchase::with('supplier')->findOrFail($id);
 
         return response()->json($purchase);
     }

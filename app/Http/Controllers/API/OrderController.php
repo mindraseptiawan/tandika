@@ -223,7 +223,6 @@ class OrderController extends Controller
             return ResponseFormatter::success([
                 'order' => $order,
                 'sale' => $sale,
-
                 'stock_movement' => $stockMovement
             ], 'Order berhasil diproses');
         } catch (\Exception $e) {
@@ -360,6 +359,8 @@ class OrderController extends Controller
         $order->save();
         $transaction = Transaction::findOrFail($sale->transaction_id);
         $transaction->amount = $sale->total_price;
+        $transaction->keterangan = '	
+Sale of chickens';
         $transaction->save();
 
         $cashflow = CashFlow::where('transaction_id', $sale->transaction_id)->firstOrFail();

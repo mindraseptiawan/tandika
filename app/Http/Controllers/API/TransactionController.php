@@ -12,7 +12,8 @@ class TransactionController extends Controller
 {
     public function all()
     {
-        $transaction = Transaction::all();
+
+        $transaction = Transaction::with('user')->get();
 
         return ResponseFormatter::success(
             $transaction,

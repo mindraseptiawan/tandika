@@ -11,7 +11,7 @@ class StockMovementController extends Controller
 {
     public function all()
     {
-        $stockMovements = StockMovement::all();
+        $stockMovements = StockMovement::with('kandang')->get();
         return ResponseFormatter::success($stockMovements, 'Data Stock berhasil diambil');
     }
 
