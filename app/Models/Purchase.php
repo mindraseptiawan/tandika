@@ -14,7 +14,8 @@ class Purchase extends Model
         'supplier_id',
         'quantity',
         'price_per_unit',
-        'total_price'
+        'total_price',
+        'kandang_id'
     ];
 
     // Relationships
@@ -26,5 +27,9 @@ class Purchase extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class, 'supplier_id', 'id');
+    }
+    public function kandang()
+    {
+        return $this->belongsTo(Kandang::class, 'kandang_id', 'id');
     }
 }

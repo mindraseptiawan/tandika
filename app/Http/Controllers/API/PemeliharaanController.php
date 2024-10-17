@@ -4,9 +4,11 @@ namespace App\Http\Controllers\API;
 
 use App\Helpers\ResponseFormatter;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
 use App\Models\Kandang;
 use App\Models\Pemeliharaan;
 use App\Models\Pakan;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -48,7 +50,6 @@ class PemeliharaanController extends Controller
     // Membuat data pemeliharaan baru
     public function create(Request $request)
     {
-        // Validasi input
         $validator = Validator::make($request->all(), [
             'kandang_id' => 'required|exists:kandang,id',
             'jenis_pakan_id' => 'required|exists:pakan,id',
@@ -68,71 +69,81 @@ class PemeliharaanController extends Controller
             );
         }
 
-        // Ambil data dari request
-        $data = $request->only([
-            'kandang_id',
-            'jenis_pakan_id',
-            'umur',
-            'jumlah_ayam',
-            'jumlah_pakan',
-            'sisa',
-            'mati',
-            'keterangan',
-        ]);
+        DB::beginTransaction();
 
-        // Update jumlah real ayam di kandang sesuai jumlah baru dari pemeliharaan
-        $kandang = Kandang::find($request->input('kandang_id'));
+        try {
+            $data = $request->only([
+                'kandang_id',
+                'jenis_pakan_id',
+                'umur',
+                'jumlah_ayam',
+                'jumlah_pakan',
+                'sisa',
+                'mati',
+                'keterangan',
+            ]);
 
-        if ($kandang) {
-            // Cek apakah jumlah ayam yang baru melebihi kapasitas kandang
+            $kandang = Kandang::findOrFail($request->input('kandang_id'));
+            $oldJumlahReal = $kandang->jumlah_real;
+
             if ($request->input('jumlah_ayam') > $kandang->kapasitas) {
-                return ResponseFormatter::error(
-                    'Jumlah ayam melebihi kapasitas kandang',
-                    'Error',
-                    400
-                );
+                throw new \Exception('Jumlah ayam melebihi kapasitas kandang');
             }
 
-            // Update jumlah real ayam di kandang sesuai jumlah ayam pada pemeliharaan
+            // Update Kandang jumlah_real
             $kandang->jumlah_real = $request->input('jumlah_ayam');
             $kandang->save();
-        }
 
-        // Update stok pakan
-        $pakan = Pakan::find($request->input('jenis_pakan_id'));
-        $jumlahPakan = $request->input('jumlah_pakan', 0);
+            // Handle Pakan
+            $pakan = Pakan::findOrFail($request->input('jenis_pakan_id'));
+            $jumlahPakan = $request->input('jumlah_pakan', 0);
 
-        if ($pakan && $jumlahPakan > 0) {
-            if ($pakan->sisa < $jumlahPakan) {
-                return ResponseFormatter::error(
-                    'Stok pakan tidak mencukupi',
-                    'Error',
-                    400
-                );
+            if ($jumlahPakan > 0) {
+                if ($pakan->sisa < $jumlahPakan) {
+                    throw new \Exception('Stok pakan tidak mencukupi');
+                }
+                $pakan->sisa -= $jumlahPakan;
+                $pakan->save();
             }
-            $pakan->sisa -= $jumlahPakan;
-            $pakan->save();
+
+            // Create Pemeliharaan record
+            $pemeliharaan = Pemeliharaan::create($data);
+
+            // Create StockMovement for the change in chicken count
+            $stockChange = $request->input('jumlah_ayam') - $oldJumlahReal;
+            if ($stockChange != 0) {
+                StockMovement::create([
+                    'kandang_id' => $kandang->id,
+                    'type' => $stockChange > 0 ? 'in' : 'out',
+                    'quantity' => abs($stockChange),
+                    'reason' => 'Pemeliharaan Create',
+                    'reference_id' => $pemeliharaan->id,
+                    'reference_type' => 'App\Models\Pemeliharaan',
+                    'notes' => "Perubahan jumlah ayam dari pemeliharaan. Mati: {$request->input('mati', 0)}",
+                ]);
+            }
+
+            DB::commit();
+
+            return ResponseFormatter::success(
+                $pemeliharaan,
+                'Data Pemeliharaan berhasil ditambahkan'
+            );
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return ResponseFormatter::error(
+                null,
+                'Terjadi kesalahan: ' . $e->getMessage(),
+                500
+            );
         }
-
-        // Buat data pemeliharaan baru
-        $pemeliharaan = Pemeliharaan::create($data);
-
-        return ResponseFormatter::success(
-            $pemeliharaan,
-            'Data Pemeliharaan berhasil ditambahkan'
-        );
     }
 
-
-
-
-    // Mengupdate data pemeliharaan
     public function update(Request $request, $id)
     {
-        // Validasi input
         $validator = Validator::make($request->all(), [
-            'kandang_id' => 'required|exists:kandangs,id',
-            'jenis_pakan_id' => 'required|exists:pakans,id',
+            'kandang_id' => 'required|exists:kandang,id',
+            'jenis_pakan_id' => 'required|exists:pakan,id',
             'umur' => 'required|integer',
             'jumlah_ayam' => 'required|integer',
             'jumlah_pakan' => 'nullable|integer|min:1',
@@ -149,66 +160,77 @@ class PemeliharaanController extends Controller
             );
         }
 
-        // Ambil data pemeliharaan berdasarkan ID
-        $pemeliharaan = Pemeliharaan::findOrFail($id);
-        $data = $request->only([
-            'kandang_id',
-            'jenis_pakan_id',
-            'umur',
-            'jumlah_ayam',
-            'jumlah_pakan',
-            'sisa',
-            'mati',
-            'keterangan',
-        ]);
+        DB::beginTransaction();
 
-        // Update jumlah real ayam di kandang sesuai jumlah baru dari pemeliharaan
-        $kandang = Kandang::find($request->input('kandang_id'));
-        if ($kandang) {
-            // Cek apakah jumlah ayam yang baru melebihi kapasitas kandang
+        try {
+            $pemeliharaan = Pemeliharaan::findOrFail($id);
+            $data = $request->only([
+                'kandang_id',
+                'jenis_pakan_id',
+                'umur',
+                'jumlah_ayam',
+                'jumlah_pakan',
+                'sisa',
+                'mati',
+                'keterangan',
+            ]);
+
+            $kandang = Kandang::findOrFail($request->input('kandang_id'));
+            $oldJumlahReal = $kandang->jumlah_real;
+
             if ($request->input('jumlah_ayam') > $kandang->kapasitas) {
-                return ResponseFormatter::error(
-                    'Jumlah ayam melebihi kapasitas kandang',
-                    'Error',
-                    400
-                );
+                throw new \Exception('Jumlah ayam melebihi kapasitas kandang');
             }
 
-            // Update jumlah real ayam di kandang sesuai jumlah ayam pada pemeliharaan
+            // Update Kandang jumlah_real
             $kandang->jumlah_real = $request->input('jumlah_ayam');
             $kandang->save();
-        }
 
-        // Update stok pakan
-        $pakan = Pakan::find($request->input('jenis_pakan_id'));
-        $jumlahPakanBaru = $request->input('jumlah_pakan', 0);
-        $jumlahPakanLama = $pemeliharaan->jumlah_pakan;
+            // Handle Pakan
+            $pakan = Pakan::findOrFail($request->input('jenis_pakan_id'));
+            $jumlahPakanBaru = $request->input('jumlah_pakan', 0);
+            $jumlahPakanLama = $pemeliharaan->jumlah_pakan;
 
-        if ($pakan && $jumlahPakanBaru > 0) {
-            // Tambahkan stok pakan lama kembali sebelum pengurangan baru
-            $pakan->sisa += $jumlahPakanLama;
-
-            // Periksa apakah stok pakan mencukupi setelah perubahan
-            if ($pakan->sisa < $jumlahPakanBaru) {
-                return ResponseFormatter::error(
-                    'Stok pakan tidak mencukupi',
-                    'Error',
-                    400
-                );
+            if ($jumlahPakanBaru > 0) {
+                $pakan->sisa += $jumlahPakanLama;
+                if ($pakan->sisa < $jumlahPakanBaru) {
+                    throw new \Exception('Stok pakan tidak mencukupi');
+                }
+                $pakan->sisa -= $jumlahPakanBaru;
+                $pakan->save();
             }
 
-            // Kurangi stok pakan dengan jumlah yang baru
-            $pakan->sisa -= $jumlahPakanBaru;
-            $pakan->save();
+            // Update Pemeliharaan record
+            $pemeliharaan->update($data);
+
+            // Create StockMovement for the change in chicken count
+            $stockChange = $request->input('jumlah_ayam') - $oldJumlahReal;
+            if ($stockChange != 0) {
+                StockMovement::create([
+                    'kandang_id' => $kandang->id,
+                    'type' => $stockChange > 0 ? 'in' : 'out',
+                    'quantity' => abs($stockChange),
+                    'reason' => 'Pemeliharaan Update',
+                    'reference_id' => $pemeliharaan->id,
+                    'reference_type' => 'App\Models\Pemeliharaan',
+                    'notes' => "Perubahan jumlah ayam dari pemeliharaan. Mati: {$request->input('mati', 0)}",
+                ]);
+            }
+
+            DB::commit();
+
+            return ResponseFormatter::success(
+                $pemeliharaan,
+                'Data Pemeliharaan berhasil diperbarui'
+            );
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return ResponseFormatter::error(
+                null,
+                'Terjadi kesalahan: ' . $e->getMessage(),
+                500
+            );
         }
-
-        // Update data pemeliharaan
-        $pemeliharaan->update($data);
-
-        return ResponseFormatter::success(
-            $pemeliharaan,
-            'Data Pemeliharaan berhasil diperbarui'
-        );
     }
 
 
