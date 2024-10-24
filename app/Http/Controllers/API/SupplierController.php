@@ -14,6 +14,10 @@ class SupplierController extends Controller
     {
         return Supplier::all();
     }
+    public function laporan()
+    {
+        return Supplier::all();
+    }
     public function create(Request $request)
     {
         $request->validate([

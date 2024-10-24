@@ -29,7 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('kandang/{id}', [KandangController::class, 'show']);
 
     Route::get('pemeliharaan', [PemeliharaanController::class, 'all']);
-    Route::get('pemeliharaan/{kandang_id}', [PemeliharaanController::class, 'all']);
+    Route::get('pemeliharaan/kandang/{kandang_id}', [PemeliharaanController::class, 'all']);
 
 
     Route::middleware('role:Pimpinan|Operator')->group(function () {
@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('kandang/{id}', [KandangController::class, 'update']);
         Route::delete('kandang/{id}', [KandangController::class, 'destroy']);
 
+        Route::get('pemeliharaan/{id}', [PemeliharaanController::class, 'show']);
         Route::post('pemeliharaan', [PemeliharaanController::class, 'create']);
         Route::put('pemeliharaan/{id}', [PemeliharaanController::class, 'update']);
         Route::delete('pemeliharaan/{id}', [PemeliharaanController::class, 'destroy']);
@@ -104,6 +105,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('user/{user}', [UserController::class, 'deleteUser']);
         Route::put('user/{Id}/deactivate', [UserController::class, 'deactivateUser']);
 
+        Route::get('customersreport', [CustomerController::class, 'laporan']);
+        Route::get('suppliersreport', [SupplierController::class, 'laporan']);
+        Route::get('purchasesreport', [PurchaseController::class, 'laporan']);
+        Route::get('salesreport', [SaleController::class, 'laporan']);
+        Route::get('transactionsreport', [TransactionController::class, 'laporan']);
+        Route::get('stocksreport', [StockMovementController::class, 'laporan']);
 
         Route::get('cashflows', [CashflowController::class, 'index']);
     });

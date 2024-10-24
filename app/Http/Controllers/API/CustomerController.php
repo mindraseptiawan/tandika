@@ -14,6 +14,11 @@ class CustomerController extends Controller
     {
         return Customer::all();
     }
+
+    public function laporan()
+    {
+        return Customer::all();
+    }
     public function create(Request $request)
     {
         $request->validate([

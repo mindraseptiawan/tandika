@@ -20,6 +20,16 @@ class TransactionController extends Controller
             'Data transaction berhasil diambil'
         );
     }
+    public function laporan()
+    {
+
+        $transaction = Transaction::with('user')->get();
+
+        return ResponseFormatter::success(
+            $transaction,
+            'Data transaction berhasil diambil'
+        );
+    }
     public function create(Request $request)
     {
         $request->validate([

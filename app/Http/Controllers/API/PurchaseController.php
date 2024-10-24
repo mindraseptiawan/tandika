@@ -25,6 +25,15 @@ class PurchaseController extends Controller
             'Data pembelian berhasil diambil'
         );
     }
+    public function laporan()
+    {
+        $purchase = Purchase::with('supplier')->get();
+
+        return ResponseFormatter::success(
+            $purchase,
+            'Data pembelian berhasil diambil'
+        );
+    }
 
     public function getPurchasesBySupplier($supplierId)
     {
@@ -208,44 +217,20 @@ class PurchaseController extends Controller
             Cashflow::where('id', '>', $cashflow->id)
                 ->decrement('balance', $balanceDifference);
 
-            // Update stock movements if quantity or kandang has changed
+            // Update stock movement if quantity or kandang has changed
             if ($oldKandangId != $purchase->kandang_id || $oldQuantity != $purchase->quantity) {
-                // Remove old stock movement
-                StockMovement::where([
+                // Find existing stock movement
+                $stockMovement = StockMovement::where([
                     'reference_id' => $purchase->id,
                     'reference_type' => Purchase::class,
                     'type' => 'in'
-                ])->delete();
+                ])->firstOrFail();
 
-                // Create new stock movement
-                StockMovement::create([
-                    'kandang_id' => $purchase->kandang_id,
-                    'type' => 'in',
-                    'quantity' => $purchase->quantity,
-                    'reason' => 'purchase',
-                    'reference_id' => $purchase->id,
-                    'reference_type' => Purchase::class,
-                    'notes' => "Update pembelian ayam ke kandang #{$purchase->kandang_id}",
-                ]);
-
-                // Update old kandang
-                $oldKandang = Kandang::find($oldKandangId);
-                if ($oldKandang) {
-                    $oldKandang->jumlah_real -= $oldQuantity;
-                    $oldKandang->save();
-                }
-
-                // Update new kandang
-                $newKandang = Kandang::find($purchase->kandang_id);
-                if ($newKandang) {
-                    if ($newKandang->kapasitas < $newKandang->jumlah_real + $purchase->quantity) {
-                        throw new \Exception('Kapasitas di kandang baru tidak mencukupi');
-                    }
-                    $newKandang->jumlah_real += $purchase->quantity;
-                    $newKandang->save();
-                } else {
-                    throw new \Exception('Kandang baru tidak ditemukan');
-                }
+                // Update stock movement with new values
+                $stockMovement->kandang_id = $purchase->kandang_id;
+                $stockMovement->quantity = $purchase->quantity;
+                $stockMovement->notes = "Update pembelian ayam ke kandang #{$purchase->kandang_id}";
+                $stockMovement->save();
             }
 
             DB::commit();
@@ -282,13 +267,6 @@ class PurchaseController extends Controller
                 'reference_type' => Purchase::class,
                 'type' => 'in'
             ])->delete();
-
-            // Update kandang if it exists
-            $kandang = Kandang::find($purchase->kandang_id);
-            if ($kandang) {
-                $kandang->jumlah_real -= $purchase->quantity;
-                $kandang->save();
-            }
 
             // Delete related cashflow
             $cashflow = Cashflow::where('transaction_id', $purchase->transaction_id)->first();

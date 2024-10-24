@@ -14,6 +14,11 @@ class SaleController extends Controller
         $sales = Sale::with('order', 'transaction', 'customer')->get();
         return ResponseFormatter::success($sales, 'Data penjualan berhasil diambil');
     }
+    public function laporan()
+    {
+        $sales = Sale::with('order', 'transaction', 'customer')->get();
+        return ResponseFormatter::success($sales, 'Data penjualan berhasil diambil');
+    }
 
     // public function store(Request $request)
     // {
