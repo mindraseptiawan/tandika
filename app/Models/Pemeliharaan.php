@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Pemeliharaan extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
     /**
      * The attributes that are mass assignable.
      *
@@ -17,10 +17,10 @@ class Pemeliharaan extends Model
     protected $table = 'pemeliharaan';
     protected $fillable = [
         'kandang_id',
+        'jenis_pakan_id',
         'umur',
         'jumlah_ayam',
         'jumlah_pakan',
-        'sisa',
         'mati',
         'keterangan',
     ];

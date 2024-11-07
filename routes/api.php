@@ -28,69 +28,74 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('kandang', [KandangController::class, 'all']);
     Route::get('kandang/{id}', [KandangController::class, 'show']);
 
+    Route::get('stocks', [StockMovementController::class, 'all']);
+    Route::get('stocks/kandang/{kandang_id}', [StockMovementController::class, 'getByKandangId']);
+
     Route::get('pemeliharaan', [PemeliharaanController::class, 'all']);
     Route::get('pemeliharaan/kandang/{kandang_id}', [PemeliharaanController::class, 'all']);
+    Route::get('pemeliharaan/{id}', [PemeliharaanController::class, 'show']);
+    Route::post('pemeliharaan', [PemeliharaanController::class, 'create']);
+    Route::put('pemeliharaan/{id}', [PemeliharaanController::class, 'update']);
+    Route::delete('pemeliharaan/{id}', [PemeliharaanController::class, 'destroy']);
 
+    Route::get('pakan', [PakanController::class, 'all']);
+    Route::put('pakan/{id}', [PakanController::class, 'update']);
+
+    Route::get('orders/status/{status}', [OrderController::class, 'getOrdersByStatus']);
+    Route::get('orders', [OrderController::class, 'all']);
+    Route::get('orders/{id}', [OrderController::class, 'show']);
+    Route::get('/orders/customer/{customer_id}', [OrderController::class, 'getOrdersByCustomer']);
+
+    Route::get('purchases', [PurchaseController::class, 'all']);
+    Route::get('purchases/{id}', [PurchaseController::class, 'show']);
+    Route::get('purchases/supplier/{supplier_id}', [PurchaseController::class, 'getPurchasesBySupplier']);
+
+    Route::get('sales', [SaleController::class, 'all']);
+    Route::get('sales/{id}', [SaleController::class, 'show']);
+    Route::get('sales/customer/{customer_id}', [SaleController::class, 'getSalesByCustomer']);
+
+    Route::get('suppliers', [SupplierController::class, 'all']);
+    Route::get('suppliers/{id}', [SupplierController::class, 'show']);
+
+    Route::get('customers', [CustomerController::class, 'all']);
+    Route::get('customers/{id}', [CustomerController::class, 'show']);
+
+    Route::get('transactions', [TransactionController::class, 'all']);
+    Route::get('transactions/{id}', [TransactionController::class, 'show']);
 
     Route::middleware('role:Pimpinan|Operator')->group(function () {
         Route::post('kandang', [KandangController::class, 'store']);
         Route::put('kandang/{id}', [KandangController::class, 'update']);
         Route::delete('kandang/{id}', [KandangController::class, 'destroy']);
 
-        Route::get('pemeliharaan/{id}', [PemeliharaanController::class, 'show']);
-        Route::post('pemeliharaan', [PemeliharaanController::class, 'create']);
-        Route::put('pemeliharaan/{id}', [PemeliharaanController::class, 'update']);
-        Route::delete('pemeliharaan/{id}', [PemeliharaanController::class, 'destroy']);
-
-        Route::get('stocks/kandang/{kandang_id}', [StockMovementController::class, 'getByKandangId']);
-        Route::get('stocks', [StockMovementController::class, 'all']);
 
 
-        Route::get('suppliers', [SupplierController::class, 'all']);
-        Route::get('suppliers/{id}', [SupplierController::class, 'show']);
         Route::post('suppliers', [SupplierController::class, 'create']);
         Route::put('suppliers/{id}', [SupplierController::class, 'update']);
         Route::delete('suppliers/{id}', [SupplierController::class, 'destroy']);
 
-        Route::get('customers', [CustomerController::class, 'all']);
-        Route::get('customers/{id}', [CustomerController::class, 'show']);
         Route::post('customers', [CustomerController::class, 'create']);
         Route::put('customers/{id}', [CustomerController::class, 'update']);
         Route::delete('customers/{id}', [CustomerController::class, 'destroy']);
 
-        Route::get('transactions', [TransactionController::class, 'all']);
-        Route::get('transactions/{id}', [TransactionController::class, 'show']);
         Route::post('transactions', [TransactionController::class, 'create']);
         Route::put('transactions/{id}', [TransactionController::class, 'update']);
         Route::delete('transactions/{id}', [TransactionController::class, 'destroy']);
 
-        Route::get('purchases', [PurchaseController::class, 'all']);
-        Route::get('purchases/{id}', [PurchaseController::class, 'show']);
-        Route::get('purchases/supplier/{supplier_id}', [PurchaseController::class, 'getPurchasesBySupplier']);
         Route::post('purchases', [PurchaseController::class, 'create']);
         Route::post('purchases/{id}', [PurchaseController::class, 'update']);
         Route::delete('purchases/{id}', [PurchaseController::class, 'destroy']);
 
-        Route::get('sales', [SaleController::class, 'all']);
-        Route::get('sales/{id}', [SaleController::class, 'show']);
-        Route::get('sales/customer/{customer_id}', [SaleController::class, 'getSalesByCustomer']);
         Route::post('/sales', [SaleController::class, 'create']);
         Route::put('sales/{id}', [SaleController::class, 'update']);
         Route::delete('sales/{id}', [SaleController::class, 'destroy']);
 
-        Route::get('pakan', [PakanController::class, 'all']);
         Route::post('pakan', [PakanController::class, 'create']);
-        Route::put('pakan/{id}', [PakanController::class, 'update']);
         Route::delete('pakan/{id}', [PakanController::class, 'destroy']);
 
-
-        Route::get('orders', [OrderController::class, 'all']);
-        Route::get('/orders/customer/{customer_id}', [OrderController::class, 'getOrdersByCustomer']);
         Route::post('orders', [OrderController::class, 'store']);
-        Route::get('orders/{id}', [OrderController::class, 'show']);
         Route::put('orders/{id}', [OrderController::class, 'update']);
         Route::delete('orders/{id}', [OrderController::class, 'destroy']);
-        Route::get('orders/status/{status}', [OrderController::class, 'getOrdersByStatus']);
         Route::post('/orders/{id}/set-price', [OrderController::class, 'setPricePerUnit']);
         Route::post('/orders/{id}/process', [OrderController::class, 'processOrder']);
         Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder']);

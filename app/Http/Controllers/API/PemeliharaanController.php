@@ -56,7 +56,7 @@ class PemeliharaanController extends Controller
             'umur' => 'required|integer',
             'jumlah_ayam' => 'required|integer',
             'jumlah_pakan' => 'nullable|integer|min:1',
-            'sisa' => 'nullable|integer',
+
             'mati' => 'nullable|integer',
             'keterangan' => 'nullable|string',
         ]);
@@ -78,7 +78,7 @@ class PemeliharaanController extends Controller
                 'umur',
                 'jumlah_ayam',
                 'jumlah_pakan',
-                'sisa',
+
                 'mati',
                 'keterangan',
             ]);
@@ -116,10 +116,10 @@ class PemeliharaanController extends Controller
                     'kandang_id' => $kandang->id,
                     'type' => $stockChange > 0 ? 'in' : 'out',
                     'quantity' => abs($stockChange),
-                    'reason' => 'Pemeliharaan Create',
+                    'reason' => 'other',
                     'reference_id' => $pemeliharaan->id,
                     'reference_type' => 'App\Models\Pemeliharaan',
-                    'notes' => "Perubahan jumlah ayam dari pemeliharaan. Mati: {$request->input('mati', 0)}",
+                    'notes' => "Perubahan jumlah ayam mati: {$request->input('mati', 0)}",
                 ]);
             }
 
@@ -147,7 +147,6 @@ class PemeliharaanController extends Controller
             'umur' => 'required|integer',
             'jumlah_ayam' => 'required|integer',
             'jumlah_pakan' => 'nullable|integer|min:1',
-            'sisa' => 'nullable|integer',
             'mati' => 'nullable|integer',
             'keterangan' => 'nullable|string',
         ]);
@@ -170,7 +169,6 @@ class PemeliharaanController extends Controller
                 'umur',
                 'jumlah_ayam',
                 'jumlah_pakan',
-                'sisa',
                 'mati',
                 'keterangan',
             ]);
@@ -210,10 +208,10 @@ class PemeliharaanController extends Controller
                     'kandang_id' => $kandang->id,
                     'type' => $stockChange > 0 ? 'in' : 'out',
                     'quantity' => abs($stockChange),
-                    'reason' => 'Pemeliharaan Update',
+                    'reason' => 'other',
                     'reference_id' => $pemeliharaan->id,
                     'reference_type' => 'App\Models\Pemeliharaan',
-                    'notes' => "Perubahan jumlah ayam dari pemeliharaan. Mati: {$request->input('mati', 0)}",
+                    'notes' => "Perubahan jumlah ayam mati: {$request->input('mati', 0)}",
                 ]);
             }
 

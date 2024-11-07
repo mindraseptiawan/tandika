@@ -15,7 +15,16 @@ class StockMovementController extends Controller
         return ResponseFormatter::success($stockMovements, 'Data Stock berhasil diambil');
     }
 
+    public function laporan()
+    {
 
+        $stockMovements = StockMovement::with('kandang')->get();
+
+        return ResponseFormatter::success(
+            $stockMovements,
+            'Data stock berhasil diambil'
+        );
+    }
     public function store(Request $request)
     {
         $request->validate([
