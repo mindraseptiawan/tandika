@@ -102,7 +102,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder']);
         Route::post('/orders/{id}/submit-payment', [OrderController::class, 'submitPaymentProof']);
         Route::post('/orders/{id}/verify-payment', [OrderController::class, 'verifyPayment']);
-        Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelOrder']);
 
         Route::get('cashflows', [CashflowController::class, 'index']);
     });
