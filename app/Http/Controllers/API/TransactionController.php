@@ -41,27 +41,27 @@ class TransactionController extends Controller
 
         $transaction = Transaction::create($request->all());
 
-        $previousBalance = CashFlow::latest()->first()->balance ?? 0;
+        $previousBalance = Cashflow::latest()->first()->balance ?? 0;
 
         if ($request->type == 'salary') {
-            // Create a new CashFlow record for salary
-            CashFlow::create([
+            // Create a new Cashflow record for salary
+            Cashflow::create([
                 'transaction_id' => $transaction->id,
                 'type' => 'out',
                 'amount' => $transaction->amount,
                 'balance' => $previousBalance - $transaction->amount,
             ]);
         } elseif ($request->type == 'purchase') {
-            // Create a new CashFlow record for purchase
-            CashFlow::create([
+            // Create a new Cashflow record for purchase
+            Cashflow::create([
                 'transaction_id' => $transaction->id,
                 'type' => 'out',
                 'amount' => $transaction->amount,
                 'balance' => $previousBalance - $transaction->amount,
             ]);
         } elseif ($request->type == 'sale') {
-            // Create a new CashFlow record for sale
-            CashFlow::create([
+            // Create a new Cashflow record for sale
+            Cashflow::create([
                 'transaction_id' => $transaction->id,
                 'type' => 'in',
                 'amount' => $transaction->amount,
@@ -87,19 +87,19 @@ class TransactionController extends Controller
         $oldAmount = $transaction->amount;
         $transaction->update($request->only(['amount', 'keterangan']));
 
-        $previousBalance = CashFlow::latest()->first()->balance ?? 0;
+        $previousBalance = Cashflow::latest()->first()->balance ?? 0;
         $diffAmount = $transaction->amount - $oldAmount;
 
         if ($transaction->type == 'salary') {
-            // Update CashFlow record for salary
-            $cashFlow = CashFlow::where('transaction_id', $id)->first();
+            // Update Cashflow record for salary
+            $cashFlow = Cashflow::where('transaction_id', $id)->first();
             if ($cashFlow) {
                 $cashFlow->update([
                     'amount' => $transaction->amount,
                     'balance' => $previousBalance - $diffAmount,
                 ]);
             } else {
-                CashFlow::create([
+                Cashflow::create([
                     'transaction_id' => $transaction->id,
                     'type' => 'out',
                     'amount' => $transaction->amount,
@@ -107,15 +107,15 @@ class TransactionController extends Controller
                 ]);
             }
         } elseif ($transaction->type == 'purchase') {
-            // Update CashFlow record for purchase
-            $cashFlow = CashFlow::where('transaction_id', $id)->first();
+            // Update Cashflow record for purchase
+            $cashFlow = Cashflow::where('transaction_id', $id)->first();
             if ($cashFlow) {
                 $cashFlow->update([
                     'amount' => $transaction->amount,
                     'balance' => $previousBalance - $diffAmount,
                 ]);
             } else {
-                CashFlow::create([
+                Cashflow::create([
                     'transaction_id' => $transaction->id,
                     'type' => 'out',
                     'amount' => $transaction->amount,
@@ -123,15 +123,15 @@ class TransactionController extends Controller
                 ]);
             }
         } elseif ($transaction->type == 'sale') {
-            // Update CashFlow record for sale
-            $cashFlow = CashFlow::where('transaction_id', $id)->first();
+            // Update Cashflow record for sale
+            $cashFlow = Cashflow::where('transaction_id', $id)->first();
             if ($cashFlow) {
                 $cashFlow->update([
                     'amount' => $transaction->amount,
                     'balance' => $previousBalance + $diffAmount,
                 ]);
             } else {
-                CashFlow::create([
+                Cashflow::create([
                     'transaction_id' => $transaction->id,
                     'type' => 'in',
                     'amount' => $transaction->amount,
@@ -143,7 +143,7 @@ class TransactionController extends Controller
         // Update semua data transaksi yang terkait dengan perubahan balance
         $transactions = Transaction::where('id', '>', $id)->get();
         foreach ($transactions as $t) {
-            $cashFlow = CashFlow::where('transaction_id', $t->id)->first();
+            $cashFlow = Cashflow::where('transaction_id', $t->id)->first();
             if ($cashFlow) {
                 if ($t->type == 'salary' || $t->type == 'purchase') {
                     $cashFlow->update([

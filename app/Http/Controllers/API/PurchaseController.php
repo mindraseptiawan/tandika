@@ -97,8 +97,8 @@ class PurchaseController extends Controller
                 'kandang_id' => $request->kandang_id,
             ]);
 
-            $previousBalance = CashFlow::latest()->first()->balance ?? 0;
-            $cashflow = CashFlow::create([
+            $previousBalance = Cashflow::latest()->first()->balance ?? 0;
+            $cashflow = Cashflow::create([
                 'transaction_id' => $transaction->id,
                 'type' => 'out',
                 'amount' => $request->quantity * $request->price_per_unit,

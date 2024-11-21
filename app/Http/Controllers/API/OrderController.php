@@ -271,7 +271,7 @@ class OrderController extends Controller
                         ->where('type', 'out')
                         ->delete();
 
-                    // Delete associated Sale, Transaction, and CashFlow
+                    // Delete associated Sale, Transaction, and Cashflow
                     $sale = Sale::where('order_id', $order->id)->first();
                     if ($sale) {
                         if ($sale->transaction_id) {
