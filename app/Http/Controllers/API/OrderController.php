@@ -10,7 +10,7 @@ use App\Models\Sale;
 use App\Models\Transaction;
 use App\Models\StockMovement;
 use App\Models\Customer;
-use App\Models\CashFlow;
+use App\Models\Cashflow;
 use Illuminate\Http\Request;
 use App\Helpers\ResponseFormatter;
 
@@ -138,11 +138,11 @@ class OrderController extends Controller
                 'keterangan' => 'Sale pending amount',
             ]);
 
-            $cashflow = CashFlow::create([
+            $cashflow = Cashflow::create([
                 'transaction_id' => $transaction->id,
                 'type' => 'in',
                 'amount' => null, // Amount masih null
-                'balance' => CashFlow::latest()->first()->balance ?? 0,
+                'balance' => Cashflow::latest()->first()->balance ?? 0,
             ]);
             // Cek apakah sudah ada sale untuk order ini
             $sale = Sale::where('order_id', $order->id)->first();
@@ -250,9 +250,9 @@ class OrderController extends Controller
                     // Delete associated Sale
                     $sale = Sale::where('order_id', $order->id)->first();
                     if ($sale) {
-                        // Delete associated Transaction and CashFlow
+                        // Delete associated Transaction and Cashflow
                         if ($sale->transaction_id) {
-                            CashFlow::where('transaction_id', $sale->transaction_id)->delete();
+                            Cashflow::where('transaction_id', $sale->transaction_id)->delete();
                             Transaction::destroy($sale->transaction_id);
                         }
                         $sale->delete();
@@ -275,7 +275,7 @@ class OrderController extends Controller
                     $sale = Sale::where('order_id', $order->id)->first();
                     if ($sale) {
                         if ($sale->transaction_id) {
-                            CashFlow::where('transaction_id', $sale->transaction_id)->delete();
+                            Cashflow::where('transaction_id', $sale->transaction_id)->delete();
                             Transaction::destroy($sale->transaction_id);
                         }
                         $sale->delete();
@@ -296,7 +296,7 @@ class OrderController extends Controller
                     $sale = Sale::where('order_id', $order->id)->first();
                     if ($sale) {
                         if ($sale->transaction_id) {
-                            CashFlow::where('transaction_id', $sale->transaction_id)->delete();
+                            Cashflow::where('transaction_id', $sale->transaction_id)->delete();
                             Transaction::destroy($sale->transaction_id);
                         }
                         $sale->delete();
@@ -363,7 +363,7 @@ class OrderController extends Controller
 Sale of chickens';
         $transaction->save();
 
-        $cashflow = CashFlow::where('transaction_id', $sale->transaction_id)->firstOrFail();
+        $cashflow = Cashflow::where('transaction_id', $sale->transaction_id)->firstOrFail();
         $cashflow->amount = $sale->total_price;
         $cashflow->balance = $cashflow->balance + $sale->total_price; // Update balance
         $cashflow->save();
