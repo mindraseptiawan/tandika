@@ -50,16 +50,25 @@ class PemeliharaanController extends Controller
     // Membuat data pemeliharaan baru
     public function create(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        // Basic validation rules
+        $rules = [
             'kandang_id' => 'required|exists:kandang,id',
-            'jenis_pakan_id' => 'required|exists:pakan,id',
             'umur' => 'required|integer',
             'jumlah_ayam' => 'required|integer',
-            'jumlah_pakan' => 'nullable|integer|min:1',
-
             'mati' => 'nullable|integer',
             'keterangan' => 'nullable|string',
-        ]);
+        ];
+
+        // Add conditional validation for pakan
+        if ($request->has('jumlah_pakan') && $request->jumlah_pakan > 0) {
+            $rules['jenis_pakan_id'] = 'required|exists:pakan,id';
+            $rules['jumlah_pakan'] = 'required|integer|min:1';
+        } else {
+            $rules['jenis_pakan_id'] = 'nullable';
+            $rules['jumlah_pakan'] = 'nullable';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return ResponseFormatter::error(
@@ -74,14 +83,17 @@ class PemeliharaanController extends Controller
         try {
             $data = $request->only([
                 'kandang_id',
-                'jenis_pakan_id',
                 'umur',
                 'jumlah_ayam',
-                'jumlah_pakan',
-
                 'mati',
                 'keterangan',
             ]);
+
+            // Only add pakan-related data if jumlah_pakan is provided and greater than 0
+            if ($request->has('jumlah_pakan') && $request->jumlah_pakan > 0) {
+                $data['jenis_pakan_id'] = $request->jenis_pakan_id;
+                $data['jumlah_pakan'] = $request->jumlah_pakan;
+            }
 
             $kandang = Kandang::findOrFail($request->input('kandang_id'));
             $oldJumlahReal = $kandang->jumlah_real;
@@ -94,11 +106,11 @@ class PemeliharaanController extends Controller
             $kandang->jumlah_real = $request->input('jumlah_ayam');
             $kandang->save();
 
-            // Handle Pakan
-            $pakan = Pakan::findOrFail($request->input('jenis_pakan_id'));
-            $jumlahPakan = $request->input('jumlah_pakan', 0);
+            // Handle Pakan only if jumlah_pakan is provided and greater than 0
+            if ($request->has('jumlah_pakan') && $request->jumlah_pakan > 0) {
+                $pakan = Pakan::findOrFail($request->input('jenis_pakan_id'));
+                $jumlahPakan = $request->input('jumlah_pakan');
 
-            if ($jumlahPakan > 0) {
                 if ($pakan->sisa < $jumlahPakan) {
                     throw new \Exception('Stok pakan tidak mencukupi');
                 }
@@ -141,15 +153,25 @@ class PemeliharaanController extends Controller
 
     public function update(Request $request, $id)
     {
-        $validator = Validator::make($request->all(), [
+        // Basic validation rules
+        $rules = [
             'kandang_id' => 'required|exists:kandang,id',
-            'jenis_pakan_id' => 'required|exists:pakan,id',
             'umur' => 'required|integer',
             'jumlah_ayam' => 'required|integer',
-            'jumlah_pakan' => 'nullable|integer|min:1',
             'mati' => 'nullable|integer',
             'keterangan' => 'nullable|string',
-        ]);
+        ];
+
+        // Add conditional validation for pakan
+        if ($request->has('jumlah_pakan') && $request->jumlah_pakan > 0) {
+            $rules['jenis_pakan_id'] = 'required|exists:pakan,id';
+            $rules['jumlah_pakan'] = 'required|integer|min:1';
+        } else {
+            $rules['jenis_pakan_id'] = 'nullable';
+            $rules['jumlah_pakan'] = 'nullable';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return ResponseFormatter::error(
@@ -165,13 +187,20 @@ class PemeliharaanController extends Controller
             $pemeliharaan = Pemeliharaan::findOrFail($id);
             $data = $request->only([
                 'kandang_id',
-                'jenis_pakan_id',
                 'umur',
                 'jumlah_ayam',
-                'jumlah_pakan',
                 'mati',
                 'keterangan',
             ]);
+
+            // Only add pakan-related data if jumlah_pakan is provided and greater than 0
+            if ($request->has('jumlah_pakan') && $request->jumlah_pakan > 0) {
+                $data['jenis_pakan_id'] = $request->jenis_pakan_id;
+                $data['jumlah_pakan'] = $request->jumlah_pakan;
+            } else {
+                $data['jenis_pakan_id'] = null;
+                $data['jumlah_pakan'] = null;
+            }
 
             $kandang = Kandang::findOrFail($request->input('kandang_id'));
             $oldJumlahReal = $kandang->jumlah_real;
@@ -185,16 +214,26 @@ class PemeliharaanController extends Controller
             $kandang->save();
 
             // Handle Pakan
-            $pakan = Pakan::findOrFail($request->input('jenis_pakan_id'));
-            $jumlahPakanBaru = $request->input('jumlah_pakan', 0);
-            $jumlahPakanLama = $pemeliharaan->jumlah_pakan;
+            if ($request->has('jumlah_pakan') && $request->jumlah_pakan > 0) {
+                $pakan = Pakan::findOrFail($request->input('jenis_pakan_id'));
+                $jumlahPakanBaru = $request->input('jumlah_pakan');
+                $jumlahPakanLama = $pemeliharaan->jumlah_pakan ?? 0;
 
-            if ($jumlahPakanBaru > 0) {
-                $pakan->sisa += $jumlahPakanLama;
+                // Kembalikan stok lama
+                if ($jumlahPakanLama > 0) {
+                    $pakan->sisa += $jumlahPakanLama;
+                }
+
+                // Cek dan kurangi stok baru
                 if ($pakan->sisa < $jumlahPakanBaru) {
                     throw new \Exception('Stok pakan tidak mencukupi');
                 }
                 $pakan->sisa -= $jumlahPakanBaru;
+                $pakan->save();
+            } else if ($pemeliharaan->jumlah_pakan > 0) {
+                // Jika sebelumnya ada pakan dan sekarang dihapus, kembalikan stok
+                $pakan = Pakan::findOrFail($pemeliharaan->jenis_pakan_id);
+                $pakan->sisa += $pemeliharaan->jumlah_pakan;
                 $pakan->save();
             }
 
@@ -230,7 +269,6 @@ class PemeliharaanController extends Controller
             );
         }
     }
-
 
 
 
