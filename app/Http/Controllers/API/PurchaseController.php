@@ -53,6 +53,47 @@ class PurchaseController extends Controller
         );
     }
 
+    public function getPurchasesByKandang($kandangId)
+    {
+        $purchases = Purchase::where('kandang_id', $kandangId)->get();
+
+        if ($purchases->isEmpty()) {
+            return ResponseFormatter::error(
+                null,
+                'Data Purchase tidak ditemukan',
+                404
+            );
+        }
+
+        // Map each purchase to include current stock
+        $purchasesWithStock = $purchases->map(function ($purchase) {
+            $currentStock = $purchase->quantity
+                - $purchase->stockMovements()
+                ->where('type', 'out')
+                ->sum('quantity');
+
+            return [
+                'id' => $purchase->id,
+                'transaction_id' => $purchase->transaction_id,
+                'kandang_id' => $purchase->kandang_id,
+                'supplier_id' => $purchase->supplier_id,
+                'quantity' => $purchase->quantity,
+                'price_per_unit' => $purchase->price_per_unit,
+                'total_price' => $purchase->total_price,
+                'created_at' => $purchase->created_at,
+                'updated_at' => $purchase->updated_at,
+                'date' => $purchase->created_at,
+                'currentStock' => $currentStock,
+            ];
+        });
+
+        return ResponseFormatter::success(
+            $purchasesWithStock,
+            'Data Purchase berhasil diambil'
+        );
+    }
+
+
     public function create(Request $request)
     {
         $request->validate([
@@ -108,6 +149,7 @@ class PurchaseController extends Controller
             // Create a new StockMovement record
             StockMovement::create([
                 'kandang_id' => $request->kandang_id,
+                'purchase_id' => $purchase->id,
                 'type' => 'in',
                 'quantity' => $request->quantity,
                 'reason' => 'purchase',

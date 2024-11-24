@@ -9,6 +9,7 @@ use App\Models\Kandang;
 use App\Models\Pemeliharaan;
 use App\Models\Pakan;
 use App\Models\StockMovement;
+use App\Models\Purchase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -53,7 +54,7 @@ class PemeliharaanController extends Controller
         // Basic validation rules
         $rules = [
             'kandang_id' => 'required|exists:kandang,id',
-            'umur' => 'required|integer',
+            'purchase_id' => 'required|exists:purchases,id',
             'jumlah_ayam' => 'required|integer',
             'mati' => 'nullable|integer',
             'keterangan' => 'nullable|string',
@@ -83,12 +84,15 @@ class PemeliharaanController extends Controller
         try {
             $data = $request->only([
                 'kandang_id',
-                'umur',
+                'purchase_id',
                 'jumlah_ayam',
                 'mati',
                 'keterangan',
             ]);
-
+            $purchase = Purchase::findOrFail($request->purchase_id);
+            if ($purchase->kandang_id != $request->kandang_id) {
+                throw new \Exception('Batch ini bukan milik kandang yang dipilih');
+            }
             // Only add pakan-related data if jumlah_pakan is provided and greater than 0
             if ($request->has('jumlah_pakan') && $request->jumlah_pakan > 0) {
                 $data['jenis_pakan_id'] = $request->jenis_pakan_id;
@@ -126,6 +130,7 @@ class PemeliharaanController extends Controller
             if ($stockChange != 0) {
                 StockMovement::create([
                     'kandang_id' => $kandang->id,
+                    'purchase_id' => $purchase->id,
                     'type' => $stockChange > 0 ? 'in' : 'out',
                     'quantity' => abs($stockChange),
                     'reason' => 'other',

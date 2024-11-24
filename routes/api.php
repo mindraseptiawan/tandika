@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('stocks', [StockMovementController::class, 'all']);
     Route::get('stocks/kandang/{kandang_id}', [StockMovementController::class, 'getByKandangId']);
+    Route::get('stocks/purchase/{purchase_id}', [StockMovementController::class, 'getByPurchaseId']);
 
     Route::get('pemeliharaan', [PemeliharaanController::class, 'all']);
     Route::get('pemeliharaan/kandang/{kandang_id}', [PemeliharaanController::class, 'all']);
@@ -49,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('purchases', [PurchaseController::class, 'all']);
     Route::get('purchases/{id}', [PurchaseController::class, 'show']);
     Route::get('purchases/supplier/{supplier_id}', [PurchaseController::class, 'getPurchasesBySupplier']);
+    Route::get('purchases/kandang/{kandang_id}', [PurchaseController::class, 'getPurchasesByKandang']);
 
     Route::get('sales', [SaleController::class, 'all']);
     Route::get('sales/{id}', [SaleController::class, 'show']);

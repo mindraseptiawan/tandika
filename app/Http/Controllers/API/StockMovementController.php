@@ -29,6 +29,7 @@ class StockMovementController extends Controller
     {
         $request->validate([
             'kandang_id' => 'required|exists:kandangs,id',
+            'purchase_id' => 'required|exists:purchases,id',
             'type' => 'required|string',
             'quantity' => 'required|numeric',
             'reason' => 'required|string',
@@ -85,6 +86,12 @@ class StockMovementController extends Controller
     public function getByKandangId($kandangId)
     {
         $stockMovements = StockMovement::where('kandang_id', $kandangId)->get();
+        return ResponseFormatter::success($stockMovements, 'Data Stock berhasil diambil');
+    }
+
+    public function getByPurchaseId($purchaseId)
+    {
+        $stockMovements = StockMovement::where('purchase_id', $purchaseId)->get();
         return ResponseFormatter::success($stockMovements, 'Data Stock berhasil diambil');
     }
 }

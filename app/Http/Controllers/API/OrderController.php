@@ -7,12 +7,14 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Kandang;
 use App\Models\Order;
 use App\Models\Sale;
+use App\Models\Purchase;
 use App\Models\Transaction;
 use App\Models\StockMovement;
 use App\Models\Customer;
 use App\Models\Cashflow;
 use Illuminate\Http\Request;
 use App\Helpers\ResponseFormatter;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
@@ -183,6 +185,8 @@ class OrderController extends Controller
 
         $request->validate([
             'kandang_id' => 'required|exists:kandang,id',
+            'purchase_ids' => 'required|array',
+            'purchase_ids.*' => 'exists:purchases,id',
         ]);
 
         DB::beginTransaction();
@@ -192,29 +196,58 @@ class OrderController extends Controller
             }
 
             $kandang = Kandang::findOrFail($request->kandang_id);
+            $totalStockToDeduct = $order->quantity;
+            $remainingStockToDeduct = $totalStockToDeduct;
 
-            if ($kandang->jumlah_real < $order->quantity) {
-                return ResponseFormatter::error(null, 'Stok di kandang tidak mencukupi', 400);
+            $stockMovements = [];
+
+            foreach ($request->purchase_ids as $purchaseId) {
+                $purchase = Purchase::findOrFail($purchaseId);
+
+                if ($purchase->kandang_id != $kandang->id) {
+                    throw new \Exception("Batch #{$purchaseId} bukan milik kandang yang dipilih");
+                }
+
+                $currentStock = $purchase->quantity
+                    - $purchase->stockMovements()
+                    ->where('type', 'out')
+                    ->sum('quantity');
+
+                if ($currentStock <= 0) {
+                    continue; // Jika stok kosong, lewati batch ini
+                }
+
+                $deductFromThisBatch = min($remainingStockToDeduct, $currentStock);
+                $remainingStockToDeduct -= $deductFromThisBatch;
+
+                // Catat pergerakan stok untuk batch ini
+                $stockMovement = StockMovement::create([
+                    'kandang_id' => $kandang->id,
+                    'purchase_id' => $purchase->id,
+                    'type' => 'out',
+                    'quantity' => $deductFromThisBatch,
+                    'reason' => 'sale',
+                    'reference_id' => $sale->id,
+                    'reference_type' => Sale::class,
+                    'notes' => "Pengurangan stok untuk order #{$order->id}",
+                ]);
+
+                $stockMovements[] = $stockMovement;
+
+                if ($remainingStockToDeduct <= 0) {
+                    break; // Jika stok sudah terpenuhi, hentikan iterasi
+                }
+            }
+
+            if ($remainingStockToDeduct > 0) {
+                throw new \Exception('Stok di kandang tidak mencukupi untuk memenuhi order');
             }
 
             // Kurangi stok di kandang
-            $kandang->jumlah_real -= $order->quantity;
+            $kandang->jumlah_real -= $totalStockToDeduct;
             $kandang->save();
 
-            // Catat pergerakan stok
-            $stockMovement = StockMovement::create([
-                'kandang_id' => $kandang->id,
-                'type' => 'out',
-                'quantity' => $order->quantity,
-                'reason' => 'sale',
-                'reference_id' => $sale->id,
-                'reference_type' => Sale::class,
-                'notes' => "Pengurangan stok untuk order #{$order->id}",
-            ]);
-
-
-
-            // Update order status dan kandang_id
+            // Update order status
             $order->status = 'awaiting_payment';
             $order->kandang_id = $kandang->id;
             $order->save();
@@ -223,13 +256,15 @@ class OrderController extends Controller
             return ResponseFormatter::success([
                 'order' => $order,
                 'sale' => $sale,
-                'stock_movement' => $stockMovement
+                'stock_movements' => $stockMovements
             ], 'Order berhasil diproses');
         } catch (\Exception $e) {
             DB::rollBack();
             return ResponseFormatter::error(null, 'Terjadi kesalahan saat memproses order: ' . $e->getMessage(), 500);
         }
+        Log::info($request->all());
     }
+
 
     public function cancelOrder(Request $request, $id)
     {

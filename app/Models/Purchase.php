@@ -32,4 +32,8 @@ class Purchase extends Model
     {
         return $this->belongsTo(Kandang::class, 'kandang_id', 'id');
     }
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class, 'purchase_id', 'id');
+    }
 }

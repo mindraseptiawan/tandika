@@ -18,7 +18,7 @@ class Pemeliharaan extends Model
     protected $fillable = [
         'kandang_id',
         'jenis_pakan_id',
-        'umur',
+        'purchase_id',
         'jumlah_ayam',
         'jumlah_pakan',
         'mati',
@@ -33,5 +33,10 @@ class Pemeliharaan extends Model
     public function pakan()
     {
         return $this->belongsTo(Pakan::class, 'jenis_pakan_id');
+    }
+
+    public function purchase()
+    {
+        return $this->belongsTo(Purchase::class, 'purchase_id', 'id');
     }
 }

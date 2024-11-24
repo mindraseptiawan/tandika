@@ -11,6 +11,7 @@ class StockMovement extends Model
 
     protected $fillable = [
         'kandang_id',
+        'purchase_id',
         'type',
         'quantity',
         'reason',
@@ -23,7 +24,10 @@ class StockMovement extends Model
     {
         return $this->belongsTo(Kandang::class);
     }
-
+    public function purchase()
+    {
+        return $this->belongsTo(Purchase::class);
+    }
     public function reference()
     {
         return $this->morphTo();
