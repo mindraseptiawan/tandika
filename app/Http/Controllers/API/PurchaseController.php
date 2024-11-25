@@ -224,7 +224,7 @@ class PurchaseController extends Controller
                 $purchase->ongkir = $request->ongkir;
             }
             // Update total price termasuk ongkir
-            $purchase->total_price = $purchase->quantity * $purchase->price_per_unit;
+            $purchase->total_price = ($purchase->quantity * $purchase->price_per_unit) + $purchase->ongkir;
             if ($request->has('kandang_id')) {
                 $purchase->kandang_id = $request->kandang_id;
             }
