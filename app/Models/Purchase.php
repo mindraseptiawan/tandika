@@ -14,6 +14,7 @@ class Purchase extends Model
         'supplier_id',
         'quantity',
         'price_per_unit',
+        'ongkir',
         'total_price',
         'kandang_id'
     ];

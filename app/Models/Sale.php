@@ -15,6 +15,7 @@ class Sale extends Model
         'order_id',
         'quantity',
         'price_per_unit',
+        'ongkir',
         'total_price',
     ];
 

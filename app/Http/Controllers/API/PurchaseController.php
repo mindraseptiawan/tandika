@@ -79,6 +79,7 @@ class PurchaseController extends Controller
                 'supplier_id' => $purchase->supplier_id,
                 'quantity' => $purchase->quantity,
                 'price_per_unit' => $purchase->price_per_unit,
+                'ongkir' => $purchase->ongkir,
                 'total_price' => $purchase->total_price,
                 'created_at' => $purchase->created_at,
                 'updated_at' => $purchase->updated_at,
@@ -102,6 +103,7 @@ class PurchaseController extends Controller
             'alamat' => 'required|string|min:1',
             'quantity' => 'required|numeric',
             'price_per_unit' => 'required|numeric',
+            'ongkir' => 'nullable|numeric',
             'kandang_id' => 'required|exists:kandang,id',
         ]);
 
@@ -124,7 +126,7 @@ class PurchaseController extends Controller
             $transaction = Transaction::create([
                 'user_id' => auth()->id(),
                 'type' => 'purchase',
-                'amount' => $request->quantity * $request->price_per_unit,
+                'amount' => ($request->quantity * $request->price_per_unit) + $request->ongkir,
                 'keterangan' => 'Purchase',
             ]);
 
@@ -134,7 +136,8 @@ class PurchaseController extends Controller
                 'supplier_id' => $supplier->id,
                 'quantity' => $request->quantity,
                 'price_per_unit' => $request->price_per_unit,
-                'total_price' => $request->quantity * $request->price_per_unit,
+                'ongkir' => $request->ongkir,
+                'total_price' => ($request->quantity * $request->price_per_unit) + $request->ongkir,
                 'kandang_id' => $request->kandang_id,
             ]);
 
@@ -142,8 +145,8 @@ class PurchaseController extends Controller
             $cashflow = Cashflow::create([
                 'transaction_id' => $transaction->id,
                 'type' => 'out',
-                'amount' => $request->quantity * $request->price_per_unit,
-                'balance' => $previousBalance - $request->quantity * $request->price_per_unit,
+                'amount' => ($request->quantity * $request->price_per_unit) + $request->ongkir,
+                'balance' => $previousBalance - ($request->quantity * $request->price_per_unit) - $request->ongkir,
             ]);
 
             // Create a new StockMovement record
@@ -198,6 +201,7 @@ class PurchaseController extends Controller
             'alamat' => 'sometimes|required|string|min:1',
             'quantity' => 'sometimes|required|numeric',
             'price_per_unit' => 'sometimes|required|numeric',
+            'ongkir' => 'sometimes|required|numeric',
             'kandang_id' => 'sometimes|required|exists:kandang,id',
         ]);
 
@@ -216,6 +220,10 @@ class PurchaseController extends Controller
             if ($request->has('price_per_unit')) {
                 $purchase->price_per_unit = $request->price_per_unit;
             }
+            if ($request->has('ongkir')) {
+                $purchase->ongkir = $request->ongkir;
+            }
+            // Update total price termasuk ongkir
             $purchase->total_price = $purchase->quantity * $purchase->price_per_unit;
             if ($request->has('kandang_id')) {
                 $purchase->kandang_id = $request->kandang_id;
@@ -243,21 +251,37 @@ class PurchaseController extends Controller
                 $supplier->save();
             }
 
-            // Update transaction
+            // Update transaction with new amount including ongkir
             $transaction = Transaction::findOrFail($purchase->transaction_id);
-            $transaction->amount = $purchase->total_price;
+            $transaction->amount = $purchase->total_price + $purchase->ongkir;
             $transaction->save();
 
             // Update cashflow
             $cashflow = Cashflow::where('transaction_id', $transaction->id)->firstOrFail();
-            $balanceDifference = $purchase->total_price - $oldTotalPrice;
-            $cashflow->amount = $purchase->total_price;
+            $totalAmount = $purchase->total_price + $purchase->ongkir;
+            $oldTotalAmount = $oldTotalPrice + $purchase->ongkir;
+            $balanceDifference = $totalAmount - $oldTotalAmount;
+            $cashflow->amount = $totalAmount;
             $cashflow->balance -= $balanceDifference;
             $cashflow->save();
 
             // Update subsequent cashflows
             Cashflow::where('id', '>', $cashflow->id)
                 ->decrement('balance', $balanceDifference);
+
+            // Check kandang capacity if quantity changed
+            if ($request->has('quantity') && $oldQuantity != $purchase->quantity) {
+                $kandang = Kandang::findOrFail($purchase->kandang_id);
+                $quantityDifference = $purchase->quantity - $oldQuantity;
+
+                if ($kandang->kapasitas < $kandang->jumlah_real + $quantityDifference) {
+                    throw new \Exception('Kapasitas di kandang tidak mencukupi');
+                }
+
+                // Update kandang stock
+                $kandang->jumlah_real += $quantityDifference;
+                $kandang->save();
+            }
 
             // Update stock movement if quantity or kandang has changed
             if ($oldKandangId != $purchase->kandang_id || $oldQuantity != $purchase->quantity) {

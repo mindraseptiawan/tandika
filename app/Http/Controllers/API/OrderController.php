@@ -125,6 +125,7 @@ class OrderController extends Controller
 
         $validatedData = $request->validate([
             'price_per_unit' => 'required|numeric|min:0',
+            'ongkir' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -155,13 +156,14 @@ class OrderController extends Controller
                     'customer_id' => $order->customer_id,
                     'quantity' => $order->quantity,
                     'price_per_unit' => $validatedData['price_per_unit'],
-                    'total_price' => $order->quantity * $validatedData['price_per_unit'],
+                    'ongkir' => $validatedData['ongkir'],
+                    'total_price' => ($order->quantity * $validatedData['price_per_unit']) + $validatedData['ongkir'],
                     'transaction_id' => $transaction->id, // Set transaction_id pada sale
                 ]);
             } else {
                 // Update sale yang sudah ada
                 $sale->price_per_unit = $validatedData['price_per_unit'];
-                $sale->total_price = $order->quantity * $validatedData['price_per_unit'];
+                $sale->total_price = ($order->quantity * $validatedData['price_per_unit']) + $validatedData['ongkir'];
                 $sale->save();
             }
 
