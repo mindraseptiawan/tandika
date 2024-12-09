@@ -375,8 +375,9 @@ class OrderController extends Controller
             $order->payment_proof = null; // Clear any existing proof if no new file is uploaded
         }
 
-        $order->status = 'payment_verification';
-        $order->save();
+        $order->payment_proof_url = $order->payment_proof
+            ? url('storage/' . $order->payment_proof)
+            : null;
 
         $message = 'Bukti pembayaran berhasil disubmit';
         if ($request->payment_method === 'transfer' && !$request->hasFile('payment_proof')) {
