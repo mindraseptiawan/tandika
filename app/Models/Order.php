@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 class Order extends Model
 {
@@ -22,22 +21,6 @@ class Order extends Model
         'kandang_id'
     ];
 
-
-    protected $appends = ['payment_proof_url'];
-
-    // Relationship methods remain the same...
-
-    // New accessor to generate full URL for payment proof
-    public function getPaymentProofUrlAttribute()
-    {
-        // Check if payment_proof exists and is not null
-        if ($this->payment_proof) {
-            // Use Storage facade to generate a public URL
-            return Storage::url($this->payment_proof);
-        }
-
-        return null;
-    }
     // Relationship with Customer
     public function customer()
     {
