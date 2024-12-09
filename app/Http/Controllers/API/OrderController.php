@@ -369,7 +369,7 @@ class OrderController extends Controller
         $order->payment_method = $request->payment_method;
 
         if ($request->hasFile('payment_proof')) {
-            $path = $request->file('payment_proof')->store('payment_proofs');
+            $path = $request->file('payment_proof')->store('payment_proofs', 'public');
             $order->payment_proof = $path;
         } else {
             $order->payment_proof = null; // Clear any existing proof if no new file is uploaded
