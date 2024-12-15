@@ -358,33 +358,26 @@ class OrderController extends Controller
             return ResponseFormatter::error(null, 'Terjadi kesalahan saat membatalkan order: ' . $e->getMessage(), 500);
         }
     }
-    public function submitPaymentProof(Request $request, $id)
+    public function submitPaymentProof(Request $request, $orderId)
     {
-        $order = Order::findOrFail($id);
         $request->validate([
-            'payment_method' => 'required|in:cash,transfer',
-            'payment_proof' => 'nullable|file|image|max:2048', // Optional for both methods, max 2MB
+            'payment_method' => 'required|string',
+            'payment_proof' => 'nullable|image|max:2048',
         ]);
 
-        $order->payment_method = $request->payment_method;
+        $order = Order::findOrFail($orderId);
 
         if ($request->hasFile('payment_proof')) {
-            $path = $request->file('payment_proof')->store('payment_proofs');
+            $path = $request->file('payment_proof')->store('payment_proofs', 'public');
             $order->payment_proof = $path;
-        } else {
-            $order->payment_proof = null; // Clear any existing proof if no new file is uploaded
         }
 
-        $order->status = 'payment_verification';
+        $order->payment_method = $request->payment_method;
         $order->save();
 
-        $message = 'Bukti pembayaran berhasil disubmit';
-        if ($request->payment_method === 'transfer' && !$request->hasFile('payment_proof')) {
-            $message .= '. Namun, disarankan untuk menyertakan bukti transfer untuk mempercepat proses verifikasi.';
-        }
-
-        return ResponseFormatter::success($order, $message);
+        return response()->json(['message' => 'Payment proof submitted successfully', 'order' => $order], 200);
     }
+
 
     public function verifyPayment(Request $request, $id)
     {
@@ -394,17 +387,22 @@ class OrderController extends Controller
         $order->payment_verified_at = now();
         $order->payment_verified_by = auth()->id();
         $order->save();
+
         $transaction = Transaction::findOrFail($sale->transaction_id);
         $transaction->amount = $sale->total_price;
-        $transaction->keterangan = '	
-Sale of chickens';
+        $transaction->keterangan = 'Sale of chickens';
         $transaction->save();
 
         $cashflow = Cashflow::where('transaction_id', $sale->transaction_id)->firstOrFail();
         $cashflow->amount = $sale->total_price;
-        $cashflow->balance = $cashflow->balance + $sale->total_price; // Update balance
+        $cashflow->balance = $cashflow->balance + $sale->total_price;
         $cashflow->save();
-        return ResponseFormatter::success($order, 'Pembayaran berhasil diverifikasi');
+
+        // Include the payment proof URL in the response
+        return response()->json([
+            'message' => 'Payment successfully verified',
+            'payment_proof' => asset('storage/' . $order->payment_proof) // Return the image URL
+        ]);
     }
 
     // public function completeOrder($id)

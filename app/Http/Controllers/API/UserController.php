@@ -54,6 +54,42 @@ class UserController extends Controller
         }
     }
 
+    public function publicregister(Request $request)
+    {
+        try {
+            $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'username' => ['required', 'string', 'max:255', 'unique:users'],
+                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+                'password' => ['required', 'string', RulesPassword::min(8)],
+                'phone' => ['required', 'string', 'max:255'],
+            ]);
+
+            $user = User::create([
+                'name' => $request->name,
+                'username' => $request->username,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'phone' => $request->phone,
+            ]);
+
+            $karyawanRole = Role::where('name', 'Customer')->first();
+            $user->assignRole($karyawanRole);
+
+            $tokenResult = $user->createToken('authToken')->plainTextToken;
+
+            return ResponseFormatter::success([
+                'access_token' => $tokenResult,
+                'token_type' => 'Bearer',
+                'user' => $user
+            ], 'User Registered');
+        } catch (Exception $error) {
+            return ResponseFormatter::error([
+                'message' => 'Something went wrong',
+                'error' => $error->getMessage()
+            ], 'Authentication Failed', 500);
+        }
+    }
     // Metode Login Pengguna
     public function login(Request $request)
     {
