@@ -37,9 +37,9 @@ class PurchaseController extends Controller
 
     public function getPurchasesBySupplier($supplierId)
     {
-        $suppliers = Purchase::where('supplier_id', $supplierId)->get();
+        $purchases = Purchase::where('supplier_id', $supplierId)->get();
 
-        if (!$suppliers) {
+        if ($purchases->isEmpty()) {
             return ResponseFormatter::error(
                 null,
                 'Data Purchase tidak ditemukan',
@@ -47,8 +47,39 @@ class PurchaseController extends Controller
             );
         }
 
+        // Map each purchase to include current stock with special stock movement reduction
+        $purchasesWithStock = $purchases->map(function ($purchase) {
+            // Get the first out stock movement for this purchase
+            $firstOutMovement = $purchase->stockMovements()
+                ->where('type', 'out')
+                ->orderBy('created_at', 'asc')
+                ->first();
+
+            // Calculate current stock
+            // If first out movement exists, subtract its quantity
+            // If no out movement, use full purchase quantity
+            $currentStock = $firstOutMovement
+                ? $purchase->quantity - $firstOutMovement->quantity
+                : $purchase->quantity;
+
+            return [
+                'id' => $purchase->id,
+                'transaction_id' => $purchase->transaction_id,
+                'kandang_id' => $purchase->kandang_id,
+                'supplier_id' => $purchase->supplier_id,
+                'quantity' => $purchase->quantity,
+                'price_per_unit' => $purchase->price_per_unit,
+                'ongkir' => $purchase->ongkir,
+                'total_price' => $purchase->total_price,
+                'created_at' => $purchase->created_at,
+                'updated_at' => $purchase->updated_at,
+                'date' => $purchase->created_at,
+                'currentStock' => max(0, $currentStock), // Ensure non-negative
+            ];
+        });
+
         return ResponseFormatter::success(
-            $suppliers,
+            $purchasesWithStock,
             'Data Purchase berhasil diambil'
         );
     }
