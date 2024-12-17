@@ -8,15 +8,12 @@ use Spatie\Activitylog\LogOptions;
 
 class Cashflow extends Model
 {
-    use LogsActivity; // Mengaktifkan pencatatan aktivitas
+    use LogsActivity;
 
-    // Tentukan atribut yang akan dicatat
     protected static $logAttributes = ['name', 'email'];
 
-    // Nama log (Opsional)
     protected static $logName = 'user_activity';
 
-    // Konfigurasi lebih lanjut untuk deskripsi log
     public function getActivitylogOptions()
     {
         return LogOptions::defaults()
@@ -25,7 +22,6 @@ class Cashflow extends Model
     }
     protected $table = 'cashflows';
 
-    // Specify the attributes that are mass assignable
     protected $fillable = [
         'transaction_id',
         'type',

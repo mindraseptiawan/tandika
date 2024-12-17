@@ -17,14 +17,6 @@ class Kandang extends Model
     protected static $logAttributes = ['name', 'email'];
 
     protected static $logName = 'user_activity';
-
-    public function getActivitylogOptions()
-    {
-        return LogOptions::defaults()
-            ->logOnly(['name', 'email']) // Mencatat hanya atribut tertentu
-            ->setDescriptionForEvent(fn(string $eventName) => "User {$eventName}");
-    }
-
     /**
      * The attributes that are mass assignable.
      *
@@ -43,5 +35,11 @@ class Kandang extends Model
     public function pemeliharaans()
     {
         return $this->hasMany(Pemeliharaan::class, 'kandang_id', 'id');
+    }
+    public function getActivitylogOptions()
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email']) // Mencatat hanya atribut tertentu
+            ->setDescriptionForEvent(fn(string $eventName) => "User {$eventName}");
     }
 }
