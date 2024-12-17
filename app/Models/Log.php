@@ -11,13 +11,13 @@ class Log extends Model
 {
     use LogsActivity;
 
-    protected static $logAttributes = ['*']; // Log semua atribut
-    protected static $logName = 'system'; // Nama log
+    protected static $logAttributes = ['username', 'phone']; // Log semua atribut
+    protected static $logName = 'user_log'; // Nama log
 
     public function getActivityLogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['*'])
-            ->setDescriptionForEvent(fn(string $eventName) => "This model has been {$eventName}");
+            ->logOnly(['username', 'phone'])
+            ->setDescriptionForEvent(fn(string $eventName) => "User {$eventName}");
     }
 }
