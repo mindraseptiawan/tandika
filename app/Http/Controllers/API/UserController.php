@@ -121,7 +121,9 @@ class UserController extends Controller
             $authenticatedUser = $request->user();
 
             $tokenResult = $authenticatedUser->createToken('authToken')->plainTextToken;
-
+            activity('user_log')
+                ->causedBy(auth()->user())
+                ->log('User logged in');
             return ResponseFormatter::success([
                 'access_token' => $tokenResult,
                 'token_type' => 'Bearer',

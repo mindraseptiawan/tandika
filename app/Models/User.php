@@ -12,6 +12,8 @@ use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use App\Models\Transaction;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class User extends Authenticatable
 {
@@ -21,6 +23,11 @@ class User extends Authenticatable
     use HasProfilePhoto;
     use Notifiable;
     use TwoFactorAuthenticatable;
+    use LogsActivity;
+
+    protected static $logAttributes = ['name', 'email', 'role']; // Atribut yang ingin di-log
+    protected static $logName = 'user_log'; // Nama log
+
 
     /**
      * The attributes that are mass assignable.
@@ -72,5 +79,11 @@ class User extends Authenticatable
     public function transactions()
     {
         return $this->hasMany(Transaction::class, 'user_id', 'id');
+    }
+    public function getActivityLogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'role'])
+            ->setDescriptionForEvent(fn(string $eventName) => "User has been {$eventName}");
     }
 }
