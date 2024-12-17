@@ -12,6 +12,7 @@ use App\Http\Controllers\API\CustomerController;
 use App\Http\Controllers\API\SupplierController;
 use App\Http\Controllers\API\StockMovementController;
 use App\Http\Controllers\API\CashflowController;
+use App\Http\Controllers\API\LogController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -123,5 +124,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('stocksreport', [StockMovementController::class, 'laporan']);
 
         Route::get('cashflows', [CashflowController::class, 'index']);
+        Route::get('activity-logs', [LogController::class, 'getActivityLogs']);
     });
 });
