@@ -181,7 +181,9 @@ class UserController extends Controller
 
             // Perbarui data pengguna
             $user->update($data);
-
+            activity('user_log')
+                ->causedBy($user)
+                ->log('Profile updated');
             // Kembalikan respons sukses
             return ResponseFormatter::success($user, 'Profile updated successfully');
         } catch (Exception $error) {
