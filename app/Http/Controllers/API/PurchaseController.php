@@ -49,9 +49,10 @@ class PurchaseController extends Controller
 
         // Map each purchase to include current stock with special stock movement reduction
         $purchasesWithStock = $purchases->map(function ($purchase) {
-            // Get the first out stock movement for this purchase
+            // Get the first out stock movement for this purchase with reference type Pemeliharaan
             $deathOnWay = $purchase->stockMovements()
                 ->where('type', 'out')
+                ->where('reference_type', 'App\Models\Pemeliharaan')
                 ->orderBy('created_at', 'asc')
                 ->first();
 
@@ -67,7 +68,7 @@ class PurchaseController extends Controller
                 'created_at' => $purchase->created_at,
                 'updated_at' => $purchase->updated_at,
                 'date' => $purchase->created_at,
-                'currentStock' => $deathOnWay->quantity // Ensure non-negative
+                'currentStock' => $deathOnWay ? max(0, $deathOnWay->quantity) : 0,
             ];
         });
 
