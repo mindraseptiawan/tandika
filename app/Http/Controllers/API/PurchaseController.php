@@ -68,7 +68,7 @@ class PurchaseController extends Controller
                 'created_at' => $purchase->created_at,
                 'updated_at' => $purchase->updated_at,
                 'date' => $purchase->created_at,
-                'currentStock' => $deathOnWay ? max(0, $deathOnWay->quantity) : 0,
+                'susutPerjalanan' => $deathOnWay ? max(0, $deathOnWay->quantity) : 0,
             ];
         });
 
