@@ -50,17 +50,10 @@ class PurchaseController extends Controller
         // Map each purchase to include current stock with special stock movement reduction
         $purchasesWithStock = $purchases->map(function ($purchase) {
             // Get the first out stock movement for this purchase
-            $firstOutMovement = $purchase->stockMovements()
+            $deathOnWay = $purchase->stockMovements()
                 ->where('type', 'out')
                 ->orderBy('created_at', 'asc')
                 ->first();
-
-            // Calculate current stock
-            // If first out movement exists, subtract its quantity
-            // If no out movement, use full purchase quantity
-            $currentStock = $firstOutMovement
-                ? $purchase->quantity - $firstOutMovement->quantity
-                : $purchase->quantity;
 
             return [
                 'id' => $purchase->id,
@@ -74,7 +67,7 @@ class PurchaseController extends Controller
                 'created_at' => $purchase->created_at,
                 'updated_at' => $purchase->updated_at,
                 'date' => $purchase->created_at,
-                'currentStock' => max(0, $currentStock), // Ensure non-negative
+                'currentStock' => max(0, $deathOnWay), // Ensure non-negative
             ];
         });
 
