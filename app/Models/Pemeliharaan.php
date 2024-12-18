@@ -5,10 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Pemeliharaan extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
+    protected static $logAttributes = [
+        'kandang_id',
+        'jenis_pakan_id',
+        'purchase_id',
+        'jumlah_ayam',
+        'jumlah_pakan',
+        'mati',
+        'keterangan',
+    ];
+    protected static $logName = 'pemeliharaan_log';
     /**
      * The attributes that are mass assignable.
      *
@@ -38,5 +50,19 @@ class Pemeliharaan extends Model
     public function purchase()
     {
         return $this->belongsTo(Purchase::class, 'purchase_id', 'id');
+    }
+    public function getActivityLogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'kandang_id',
+                'jenis_pakan_id',
+                'purchase_id',
+                'jumlah_ayam',
+                'jumlah_pakan',
+                'mati',
+                'keterangan',
+            ])
+            ->setDescriptionForEvent(fn(string $eventName) => "Pemeliharaan Berhasil di{$eventName}");
     }
 }
