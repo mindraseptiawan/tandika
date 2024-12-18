@@ -75,9 +75,6 @@ class KandangController extends Controller
 
         // Simpan data ke tabel kandang
         $kandang = Kandang::create($validatedData);
-        activity('create_kandang_log')
-            ->causedBy($kandang)
-            ->log('Berhasil membuat kandang');
         return ResponseFormatter::success(
             $kandang,
             'Data Kandang berhasil ditambahkan'
