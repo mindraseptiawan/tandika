@@ -13,8 +13,8 @@ class LogController extends Controller
     public function getActivityLogs(Request $request)
     {
         try {
+            // Mengambil semua log tanpa filter berdasarkan nama log
             $logs = Activity::with('causer')
-                ->where('default', 'user_log') // Filter log berdasarkan nama log
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
 
