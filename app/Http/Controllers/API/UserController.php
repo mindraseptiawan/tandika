@@ -121,6 +121,9 @@ class UserController extends Controller
             $authenticatedUser = $request->user();
 
             $tokenResult = $authenticatedUser->createToken('authToken')->plainTextToken;
+            activity()
+                ->causedBy(auth()->user())
+                ->log('User logged in');
             return ResponseFormatter::success([
                 'access_token' => $tokenResult,
                 'token_type' => 'Bearer',
@@ -178,6 +181,7 @@ class UserController extends Controller
 
             // Perbarui data pengguna
             $user->update($data);
+
             // Kembalikan respons sukses
             return ResponseFormatter::success($user, 'Profile updated successfully');
         } catch (Exception $error) {
