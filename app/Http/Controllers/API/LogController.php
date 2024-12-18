@@ -14,7 +14,7 @@ class LogController extends Controller
     {
         try {
             $logs = Activity::with('causer')
-                ->where('log_name', 'user_log') // Filter log berdasarkan nama log
+                ->where('default', 'user_log') // Filter log berdasarkan nama log
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
 
