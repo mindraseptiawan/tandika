@@ -4,9 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Order extends Model
 {
+    use LogsActivity;
+    protected static $logAttributes = ['order_date', 'status', 'quantity',];
+    protected static $logName = 'order_log';
     protected $table = 'orders';
     protected $fillable = [
         'customer_id',
@@ -40,5 +45,15 @@ class Order extends Model
     public function kandang()
     {
         return $this->belongsTo(Kandang::class);
+    }
+    public function getActivityLogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'order_date',
+                'status',
+                'quantity',
+            ])
+            ->setDescriptionForEvent(fn(string $eventName) => "Order Berhasil di{$eventName}");
     }
 }
