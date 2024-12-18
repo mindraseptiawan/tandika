@@ -25,7 +25,7 @@ class User extends Authenticatable
     use TwoFactorAuthenticatable;
     use LogsActivity;
 
-    protected static $logAttributes = ['name', 'email', 'role']; // Atribut yang ingin di-log
+    protected static $logAttributes = ['name', 'email']; // Atribut yang ingin di-log
     protected static $logName = 'user_log'; // Nama log
 
 
@@ -83,7 +83,7 @@ class User extends Authenticatable
     public function getActivityLogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'role'])
+            ->logOnly(['name', 'email'])
             ->setDescriptionForEvent(fn(string $eventName) => "User has been {$eventName}");
     }
 }
